@@ -1,0 +1,24 @@
+{
+  "start": "princess",
+  "nodes": {
+    "princess": {
+      "speaker": "公主",
+      "text": "你来了……诅咒束缚着我。一个吻或许能解除诅咒——或者揭开真相。",
+      "choices": [
+        { "label": "亲吻公主", "next": "kiss", "setFlag": "kissedPrincess" },
+        { "label": "退后一步", "next": "hesitate" }
+      ]
+    },
+    "hesitate": {
+      "speaker": "勇士",
+      "text": "不……我必须知道真相。",
+      "next": "princess"
+    },
+    "kiss": {
+      "speaker": "旁白",
+      "text": "公主身上闪过光芒——变回了青蛙！勇士感到被欺骗，恶心地离开了。",
+      "end": true,
+      "trigger": "chapterTwo"
+    }
+  }
+}

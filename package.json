@@ -1,0 +1,23 @@
+{
+  "name": "princess-green",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:open": "vite --open",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "playwright test --project=chromium-headless",
+    "test:chapter1": "playwright test chapter1-keyboard --project=chromium-headless",
+    "test:browser": "playwright test --project=chrome-browser",
+    "test:chapter1:browser": "playwright test chapter1-keyboard --project=chrome-browser",
+    "test:ui": "playwright test --ui"
+  },
+  "dependencies": {
+    "phaser": "^4.1.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "vite": "^7.3.1"
+  }
+}
