@@ -16,7 +16,7 @@ export class QTESystem {
     this.container = scene.add.container(GAME.WIDTH / 2, GAME.HEIGHT * 0.42).setDepth(900);
     this.target = scene.add.circle(0, 0, QTE.SUCCESS_WINDOW, 0x2ecc71, 0.35);
     this.ring = scene.add.circle(0, 0, QTE.RING_START, 0xffffff, 0).setStrokeStyle(4 * PX, 0xffffff);
-    this.label = scene.add.text(0, QTE.RING_START + 40 * PX, '在绿色区域按空格！', {
+    this.label = scene.add.text(0, QTE.RING_START + 40 * PX, '绿色区域点普攻出手！', {
       fontFamily: UI.FONT,
       fontSize: `${Math.round(GAME.HEIGHT * UI.SMALL_RATIO)}px`,
       color: '#ffffff',

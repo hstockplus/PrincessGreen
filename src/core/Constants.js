@@ -182,9 +182,36 @@ export const UI = {
   // Score HUD omitted — Play.fun widget displays score in SAFE_ZONE.TOP area
 };
 
-// --- Visible Touch Controls ---
-// Semi-transparent arrow indicators for touch-capable devices.
-// Use capability detection: ('ontouchstart' in window) || (navigator.maxTouchPoints > 0)
+// --- Mobile MOBA-style controls (王者荣耀式) ---
+
+export const MOBILE = {
+  JOY_BASE: GAME.WIDTH * 0.15,
+  JOY_THUMB: GAME.WIDTH * 0.065,
+  JOY_MAX_DRAG: GAME.WIDTH * 0.08,
+  ATTACK_SIZE: GAME.WIDTH * 0.14,
+  SKILL_SIZE: GAME.WIDTH * 0.1,
+  MARGIN_X: GAME.WIDTH * 0.07,
+  MARGIN_BOTTOM: Math.max(GAME.HEIGHT * 0.08, SAFE_ZONE.BOTTOM + 16 * DPR),
+  DEAD_ZONE: 0.22,
+  DEPTH: 1000,
+  COLORS: {
+    joyBase: 0xffffff,
+    joyThumb: 0xffd060,
+    attack: 0xb83030,
+    skill: 0x2868b0,
+    stroke: 0xffd060,
+    label: '#fff8e8',
+  },
+  ALPHA: { base: 0.22, thumb: 0.55, btn: 0.72, btnPress: 0.92 },
+};
+
+export function isTouchDevice() {
+  if (typeof window === 'undefined') return false;
+  if (new URLSearchParams(window.location.search).has('touch')) return true;
+  return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+}
+
+// --- Visible Touch Controls (legacy) ---
 
 export const TOUCH = {
   BUTTON_SIZE: GAME.WIDTH * 0.12,       // 12% of canvas width

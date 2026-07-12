@@ -7,6 +7,7 @@ import { showChapterTitle } from '../ui/ChapterTitle.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
 import { drawPrincessEnvironment } from '../art/EnvironmentArt.js';
 import { createDecorSprite, TEXTURE_KEYS } from '../art/AssetRegistry.js';
+import { createMobileControls } from '../ui/MobileControls.js';
 
 export class PrincessScene extends Phaser.Scene {
   constructor() {
@@ -50,6 +51,12 @@ export class PrincessScene extends Phaser.Scene {
     this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.attackKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.J);
 
+    this.mobile = createMobileControls(this, {
+      attackLabel: '普攻',
+      skillLabels: ['跳', '舌', ''],
+      skillEnabled: [true, true, false],
+    });
+
     this.controlsEnabled = false;
     this.cameras.main.fadeIn(TRANSITION.FADE_DURATION, 0, 0, 0);
 
@@ -66,10 +73,18 @@ export class PrincessScene extends Phaser.Scene {
   update() {
     if (!this.controlsEnabled || gameState.storyComplete) return;
 
-    const jump = Phaser.Input.Keyboard.JustDown(this.spaceKey);
-    this.player.update({ left: this.wasd.left.isDown, right: this.wasd.right.isDown }, jump);
+    this.mobile.setEnabled(true);
+    const move = this.mobile.getMovement();
+    const btn = this.mobile.consumeButtons();
 
-    if (Phaser.Input.Keyboard.JustDown(this.attackKey)) {
+    const jump = Phaser.Input.Keyboard.JustDown(this.spaceKey) || btn.skill1;
+    this.player.update({
+      left: this.wasd.left.isDown || move.left,
+      right: this.wasd.right.isDown || move.right,
+    }, jump);
+
+    const attack = Phaser.Input.Keyboard.JustDown(this.attackKey) || btn.attack || btn.skill2;
+    if (attack) {
       this.player.fireTongue();
       const dx = this.player.x - this.warrior.x;
       const dy = this.player.y - this.warrior.y;

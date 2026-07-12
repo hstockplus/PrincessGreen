@@ -8,6 +8,7 @@ import { QTESystem } from '../systems/QTESystem.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
 import { drawCastleEnvironment } from '../art/EnvironmentArt.js';
 import { createDecorSprite, TEXTURE_KEYS } from '../art/AssetRegistry.js';
+import { createMobileControls } from '../ui/MobileControls.js';
 import castleDialogue from '../../assets/dialogues/castle.json';
 
 export class CastleScene extends Phaser.Scene {
@@ -61,9 +62,17 @@ export class CastleScene extends Phaser.Scene {
       right: Phaser.Input.Keyboard.KeyCodes.D,
     });
     this.interactKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+    this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+
+    this.mobile = createMobileControls(this, {
+      attackLabel: '普攻',
+      skillLabels: ['斩', '谈', ''],
+      skillEnabled: [true, true, false],
+    });
 
     if (!gameState.dragonDefeated) {
-      this.hint.setText('恶龙在前！在绿色区域按空格键');
+      this.hint.setText('恶龙在前！普攻键在绿色区域出手');
+      this.mobile.setLabels({ attack: '普攻', skills: ['斩', '谈', ''] });
       this.qte.start();
     } else {
       this.onDragonDefeated(false);
@@ -87,7 +96,8 @@ export class CastleScene extends Phaser.Scene {
     this.dragon.setVisible(false);
     this.princess.setVisible(true);
     this.state = 'explore';
-    this.hint.setText('靠近公主，按 E 键对话');
+    this.hint.setText('靠近公主，交互键对话');
+    this.mobile?.setLabels({ attack: '交互', skills: ['谈', '行', ''] });
     if (animate) this.cameras.main.flash(200, 255, 220, 180);
   }
 
@@ -112,21 +122,36 @@ export class CastleScene extends Phaser.Scene {
   }
 
   update() {
+    const inQte = gameState.qteActive;
+    this.mobile.setEnabled(!gameState.dialogueActive);
+
+    const btn = this.mobile.consumeButtons();
+    if (inQte && btn.attack) {
+      this.qte.tryHit();
+    }
+    if (inQte && (Phaser.Input.Keyboard.JustDown(this.spaceKey) || btn.skill1)) {
+      this.qte.tryHit();
+    }
+
     this.qte.update();
 
-    if (gameState.dialogueActive || gameState.qteActive || this.state !== 'explore') {
+    if (gameState.dialogueActive || (inQte && this.state !== 'explore')) {
       this.warrior.sprite.body.setVelocity(0, 0);
       return;
     }
 
+    if (this.state !== 'explore') return;
+
+    const move = this.mobile.getMovement();
     this.warrior.update({
-      left: this.wasd.left.isDown,
-      right: this.wasd.right.isDown,
-      up: this.wasd.up.isDown,
-      down: this.wasd.down.isDown,
+      left: this.wasd.left.isDown || move.left,
+      right: this.wasd.right.isDown || move.right,
+      up: this.wasd.up.isDown || move.up,
+      down: this.wasd.down.isDown || move.down,
     });
 
-    if (Phaser.Input.Keyboard.JustDown(this.interactKey) && this.isNearPrincess()) {
+    const interact = Phaser.Input.Keyboard.JustDown(this.interactKey) || btn.attack || btn.skill1;
+    if (interact && this.isNearPrincess()) {
       this.dialogue.start(castleDialogue);
     }
   }

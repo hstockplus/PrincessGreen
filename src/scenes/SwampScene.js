@@ -8,6 +8,7 @@ import { AffectionBar } from '../ui/AffectionBar.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
 import { drawSwampEnvironment } from '../art/EnvironmentArt.js';
 import { createDecorSprite, ySort, TEXTURE_KEYS } from '../art/AssetRegistry.js';
+import { createMobileControls } from '../ui/MobileControls.js';
 import swampDialogue from '../../assets/dialogues/swamp.json';
 
 export class SwampScene extends Phaser.Scene {
@@ -64,6 +65,12 @@ export class SwampScene extends Phaser.Scene {
     });
     this.interactKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
 
+    this.mobile = createMobileControls(this, {
+      attackLabel: '交互',
+      skillLabels: ['谈', '行', ''],
+      skillEnabled: [true, true, false],
+    });
+
     this.cameras.main.fadeIn(TRANSITION.FADE_DURATION, 0, 0, 0);
 
     registerTestHandler('pickDialogueChoice', (index) => this.dialogue.pickChoice(index));
@@ -84,16 +91,19 @@ export class SwampScene extends Phaser.Scene {
   }
 
   update() {
+    this.mobile.setEnabled(!gameState.dialogueActive && !gameState.qteActive);
+
     if (gameState.dialogueActive || gameState.qteActive) {
       this.warrior.sprite.body.setVelocity(0, 0);
       return;
     }
 
+    const move = this.mobile.getMovement();
     this.warrior.update({
-      left: this.wasd.left.isDown,
-      right: this.wasd.right.isDown,
-      up: this.wasd.up.isDown,
-      down: this.wasd.down.isDown,
+      left: this.wasd.left.isDown || move.left,
+      right: this.wasd.right.isDown || move.right,
+      up: this.wasd.up.isDown || move.up,
+      down: this.wasd.down.isDown || move.down,
     });
 
     if (this.companion.following) {
@@ -101,8 +111,14 @@ export class SwampScene extends Phaser.Scene {
     }
     ySort(this.frogNpc);
 
-    if (Phaser.Input.Keyboard.JustDown(this.interactKey) && this.isNearFrog()) {
+    const btn = this.mobile.consumeButtons();
+    const interact = Phaser.Input.Keyboard.JustDown(this.interactKey) || btn.attack || btn.skill1;
+    if (interact && this.isNearFrog()) {
       this.dialogue.start(swampDialogue);
+    }
+
+    if (btn.skill2 && this.canExit) {
+      this.goToCastle();
     }
 
     if (this.canExit && this.warrior.x > GAME.WIDTH * 0.80) {
