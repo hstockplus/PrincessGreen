@@ -68,24 +68,24 @@ export const SAFE_ZONE = {
 // --- RPG characters ---
 
 export const WARRIOR = {
-  WIDTH: GAME.WIDTH * 0.06,
-  HEIGHT: GAME.WIDTH * 0.06 * 1.2,
+  WIDTH: GAME.WIDTH * 0.1,
+  HEIGHT: GAME.HEIGHT * 0.32,
   SPEED: 280 * PX,
   COLOR: 0xc0392b,
   CAPE: 0x2980b9,
 };
 
 export const FROG = {
-  WIDTH: GAME.WIDTH * 0.045,
-  HEIGHT: GAME.WIDTH * 0.045,
+  WIDTH: GAME.WIDTH * 0.07,
+  HEIGHT: GAME.HEIGHT * 0.12,
   SPEED: 180 * PX,
   COLOR: 0x27ae60,
   CROWN: 0xf1c40f,
 };
 
 export const FROG_PRINCESS = {
-  WIDTH: GAME.WIDTH * 0.05,
-  HEIGHT: GAME.WIDTH * 0.05,
+  WIDTH: GAME.WIDTH * 0.08,
+  HEIGHT: GAME.HEIGHT * 0.16,
   SPEED: 140 * PX,
   JUMP_VELOCITY: -320 * PX,
   COLOR: 0x2ecc71,
@@ -94,15 +94,15 @@ export const FROG_PRINCESS = {
 };
 
 export const PRINCESS = {
-  WIDTH: GAME.WIDTH * 0.055,
-  HEIGHT: GAME.WIDTH * 0.055 * 1.4,
+  WIDTH: GAME.WIDTH * 0.1,
+  HEIGHT: GAME.HEIGHT * 0.34,
   COLOR: 0xf8f8ff,
   HAIR: 0xf1c40f,
 };
 
 export const DRAGON = {
-  WIDTH: GAME.WIDTH * 0.14,
-  HEIGHT: GAME.WIDTH * 0.1,
+  WIDTH: GAME.WIDTH * 0.2,
+  HEIGHT: GAME.HEIGHT * 0.14,
   COLOR: 0x8e44ad,
 };
 

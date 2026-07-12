@@ -1,25 +1,31 @@
-// Moon Legend (月影传说) inspired palette — warm Chinese 2D RPG tones
+// 水墨武侠唯美配色 — 月影传说 / 仙剑奇侠传风格
 // Index 0 = transparent
 
 export const MOON_PALETTE = [
   null,
-  0x1a1208, // 1 outline / ink
-  0x3d2914, // 2 shadow brown
-  0xf5d0a0, // 3 skin
-  0x1a1a1a, // 4 hair black
-  0x8b1a1a, // 5 robe crimson
-  0x1a3a6e, // 6 robe blue
-  0xc9a227, // 7 gold trim
-  0xf0ece0, // 8 white silk
-  0xffb6c8, // 9 pink ribbon
-  0x2d6b3a, // 10 jade green
-  0x4a9e5c, // 11 frog bright
-  0x6b2fa0, // 12 dragon purple
-  0xff6030, // 13 dragon fire
-  0xc0c0c0, // 14 sword silver
-  0x5a4030, // 15 wood
-  0x8b4513, // 16 roof tile
-  0xcc3333, // 17 pillar red
+  0x141010, // 1 墨线勾勒
+  0x2a1820, // 2 深影
+  0xf5d0b8, // 3 肤色
+  0x0e0c10, // 4 乌发
+  0xa01828, // 5 绛红衣
+  0x1a4a7a, // 6 靛青袍
+  0xd4a830, // 7 鎏金
+  0xf8f4ec, // 8 素白绸
+  0xe8a0b0, // 9 桃粉
+  0x1a5a3a, // 10 翠玉
+  0x3a9a5a, // 11 碧玉
+  0x5a2080, // 12 紫鳞
+  0xe87020, // 13 龙焰
+  0xb8c0c8, // 14 寒铁剑
+  0x5a3828, // 15 檀木
+  0x8b4020, // 16 黛瓦
+  0xb02020, // 17 朱柱
+  0x2a6aaa, // 18 袖褶高光
+  0x6a7a80, // 19 烟岚灰
+  0xe8ece8, // 20 云白
+  0xd87090, // 21 梅花
+  0xc04060, // 22 绯带
+  0xffffff, // 23 眸光
 ];
 
 export const SPRITE_SCALE = 4;
