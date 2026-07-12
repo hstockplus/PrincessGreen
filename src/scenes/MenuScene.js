@@ -24,7 +24,7 @@ export class MenuScene extends Phaser.Scene {
     gameState.reset();
     gameState.phase = 'menu';
     drawMenuBackdrop(this);
-    showSceneBackground(this, BG_KEYS.SWAMP, -1);
+    showSceneBackground(this, BG_KEYS.MENU, -1);
 
     const stroke = Math.round(4 * (GAME.WIDTH / 960));
     const titleStyle = {

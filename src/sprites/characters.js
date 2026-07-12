@@ -180,3 +180,23 @@ export const TEXTURE_KEYS = {
   FROG_PRINCESS: 'char_frog_princess',
   DRAGON: 'char_dragon',
 };
+
+export const SHEET_KEYS = {
+  WARRIOR: 'sheet_warrior',
+  FROG_PRINCESS: 'sheet_frog_princess',
+  PRINCESS: 'sheet_princess',
+  DRAGON: 'sheet_dragon',
+};
+
+export const UI_KEYS = {
+  JOYSTICK: 'ui_joystick',
+  SKILL_BTN: 'ui_skill_btn',
+};
+
+/** 横排精灵图每帧宽度（与素材像素一致） */
+export const SHEET_FRAMES = {
+  [SHEET_KEYS.WARRIOR]: { path: 'assets/characters/warrior_sheet.png', frameWidth: 1024, frameHeight: 1024, frames: 4 },
+  [SHEET_KEYS.FROG_PRINCESS]: { path: 'assets/characters/frog_princess_sheet.png', frameWidth: 1024, frameHeight: 1024, frames: 4 },
+  [SHEET_KEYS.PRINCESS]: { path: 'assets/characters/princess_sheet.png', frameWidth: 1184, frameHeight: 1184, frames: 3 },
+  [SHEET_KEYS.DRAGON]: { path: 'assets/characters/dragon_sheet.png', frameWidth: 1184, frameHeight: 1184, frames: 3 },
+};

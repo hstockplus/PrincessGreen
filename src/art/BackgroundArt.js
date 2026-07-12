@@ -1,24 +1,36 @@
 import { GAME } from '../core/Constants.js';
-import { TEXTURE_KEYS } from '../sprites/characters.js';
+import { TEXTURE_KEYS, SHEET_KEYS, SHEET_FRAMES, UI_KEYS } from '../sprites/characters.js';
 
 export const BG_KEYS = {
+  MENU: 'bg_menu',
   SWAMP: 'bg_swamp',
   CASTLE: 'bg_castle',
+  PRINCESS_PATH: 'bg_princess_path',
 };
 
-/** 图片资源路径（对应用户提供的 6 张概念图） */
-export const IMAGE_MANIFEST = [
-  { key: TEXTURE_KEYS.WARRIOR, path: 'assets/characters/warrior.png', role: '勇士·靛青长衫' },
-  { key: TEXTURE_KEYS.PRINCESS, path: 'assets/characters/princess.png', role: '公主·白衣罗裙' },
-  { key: TEXTURE_KEYS.FROG, path: 'assets/characters/frog.png', role: '诅咒形态·碧玉灵蛙' },
-  { key: TEXTURE_KEYS.DRAGON, path: 'assets/characters/dragon.png', role: '恶龙·紫鳞金须' },
-  { key: BG_KEYS.SWAMP, path: 'assets/backgrounds/swamp.jpg', role: '沼泽荷塘·月夜' },
-  { key: BG_KEYS.CASTLE, path: 'assets/backgrounds/castle.jpg', role: '宫殿王座·朱墙' },
+const IMAGE_ASSETS = [
+  { key: TEXTURE_KEYS.WARRIOR, path: 'assets/characters/warrior.png' },
+  { key: TEXTURE_KEYS.PRINCESS, path: 'assets/characters/princess.png' },
+  { key: TEXTURE_KEYS.FROG, path: 'assets/characters/frog.png' },
+  { key: TEXTURE_KEYS.DRAGON, path: 'assets/characters/dragon.png' },
+  { key: TEXTURE_KEYS.FROG_PRINCESS, path: 'assets/characters/frog_princess.png' },
+  { key: BG_KEYS.MENU, path: 'assets/backgrounds/menu.jpg' },
+  { key: BG_KEYS.SWAMP, path: 'assets/backgrounds/swamp.jpg' },
+  { key: BG_KEYS.CASTLE, path: 'assets/backgrounds/castle.jpg' },
+  { key: BG_KEYS.PRINCESS_PATH, path: 'assets/backgrounds/princess_path.jpg' },
+  { key: UI_KEYS.JOYSTICK, path: 'assets/ui/ui_joystick.png' },
+  { key: UI_KEYS.SKILL_BTN, path: 'assets/ui/ui_skill_btn.png' },
 ];
 
 export function preloadImageAssets(scene) {
-  for (const { key, path } of IMAGE_MANIFEST) {
+  for (const { key, path } of IMAGE_ASSETS) {
     scene.load.image(key, path);
+  }
+  for (const [key, spec] of Object.entries(SHEET_FRAMES)) {
+    scene.load.spritesheet(key, spec.path, {
+      frameWidth: spec.frameWidth,
+      frameHeight: spec.frameHeight,
+    });
   }
 }
 
@@ -30,3 +42,5 @@ export function showSceneBackground(scene, textureKey, depth = 0) {
   bg.setScale(scale);
   return bg;
 }
+
+export { SHEET_KEYS };

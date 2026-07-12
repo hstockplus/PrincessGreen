@@ -5,8 +5,8 @@ import { eventBus, Events } from '../core/EventBus.js';
 import { FrogPrincess } from '../entities/FrogPrincess.js';
 import { showChapterTitle } from '../ui/ChapterTitle.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
-import { drawPrincessEnvironment } from '../art/EnvironmentArt.js';
-import { createDecorSprite, TEXTURE_KEYS } from '../art/AssetRegistry.js';
+import { showSceneBackground, BG_KEYS } from '../art/BackgroundArt.js';
+import { createDecorSprite, TEXTURE_KEYS, SHEET_KEYS } from '../art/AssetRegistry.js';
 import { createMobileControls } from '../ui/MobileControls.js';
 
 export class PrincessScene extends Phaser.Scene {
@@ -19,7 +19,7 @@ export class PrincessScene extends Phaser.Scene {
     gameState.chapter = 2;
     this.physics.world.gravity.y = 600;
 
-    drawPrincessEnvironment(this);
+    showSceneBackground(this, BG_KEYS.PRINCESS_PATH);
 
     const ground = this.add.rectangle(GAME.WIDTH / 2, GAME.HEIGHT * 0.86, GAME.WIDTH, GAME.HEIGHT * 0.04, 0x000000, 0);
     this.physics.add.existing(ground, true);

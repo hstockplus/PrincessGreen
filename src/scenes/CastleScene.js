@@ -7,7 +7,7 @@ import { DialogueManager } from '../systems/DialogueManager.js';
 import { QTESystem } from '../systems/QTESystem.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
 import { showSceneBackground, BG_KEYS } from '../art/BackgroundArt.js';
-import { createDecorSprite, TEXTURE_KEYS } from '../art/AssetRegistry.js';
+import { createDecorSprite, TEXTURE_KEYS, SHEET_KEYS } from '../art/AssetRegistry.js';
 import { createMobileControls } from '../ui/MobileControls.js';
 import castleDialogue from '../../assets/dialogues/castle.json';
 
@@ -32,8 +32,8 @@ export class CastleScene extends Phaser.Scene {
 
     this.warrior = new Warrior(this, GAME.WIDTH * 0.12, GAME.HEIGHT * 0.62);
 
-    this.dragon = createDecorSprite(this, GAME.WIDTH * 0.5, GAME.HEIGHT * 0.48, TEXTURE_KEYS.DRAGON, DRAGON.HEIGHT, 28);
-    this.princess = createDecorSprite(this, GAME.WIDTH * 0.78, GAME.HEIGHT * 0.58, TEXTURE_KEYS.PRINCESS, PRINCESS.HEIGHT, 28);
+    this.dragon = createDecorSprite(this, GAME.WIDTH * 0.5, GAME.HEIGHT * 0.48, TEXTURE_KEYS.DRAGON, DRAGON.HEIGHT, 28, 0, SHEET_KEYS.DRAGON);
+    this.princess = createDecorSprite(this, GAME.WIDTH * 0.78, GAME.HEIGHT * 0.58, TEXTURE_KEYS.PRINCESS, PRINCESS.HEIGHT, 28, 0, SHEET_KEYS.PRINCESS);
     this.princess.setVisible(false);
     this.princess.setInteractive({ useHandCursor: true });
     this.princess.on('pointerdown', () => {
@@ -113,6 +113,7 @@ export class CastleScene extends Phaser.Scene {
     eventBus.emit(Events.KISS_REVEAL);
     eventBus.emit(Events.CHAPTER_CHANGED, { chapter: 2 });
 
+    this.princess.setFrame(2);
     this.princess.setVisible(false);
     const frogReveal = createDecorSprite(this, this.princess.x, this.princess.y, TEXTURE_KEYS.FROG, FROG.HEIGHT * 1.1, 35);
     this.tweens.add({ targets: frogReveal, scaleX: frogReveal.scaleX * 1.3, scaleY: frogReveal.scaleY * 1.3, duration: 600 });

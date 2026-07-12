@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME, MOBILE, UI, isTouchDevice } from '../core/Constants.js';
+import { UI_KEYS } from '../sprites/characters.js';
 
 const NOOP = {
   getMovement: () => ({ left: false, right: false, up: false, down: false }),
@@ -64,8 +65,9 @@ export function createMobileControls(scene, options = {}) {
     joyThumb.setPosition(joyCx, joyCy);
   }
 
-  const joyBase = scene.add.circle(joyCx, joyCy, m.JOY_BASE, c.joyBase, m.ALPHA.base)
-    .setStrokeStyle(3, c.stroke, 0.45);
+  const joyBase = scene.textures.exists(UI_KEYS.JOYSTICK)
+    ? scene.add.image(joyCx, joyCy, UI_KEYS.JOYSTICK).setDisplaySize(m.JOY_BASE * 2, m.JOY_BASE * 2).setAlpha(m.ALPHA.base)
+    : scene.add.circle(joyCx, joyCy, m.JOY_BASE, c.joyBase, m.ALPHA.base).setStrokeStyle(3, c.stroke, 0.45);
   const joyThumb = scene.add.circle(joyCx, joyCy, m.JOY_THUMB, c.joyThumb, m.ALPHA.thumb)
     .setStrokeStyle(2, c.stroke, 0.65);
   const joyZone = scene.add.circle(joyCx, joyCy, m.JOY_BASE + 12, 0x000000, 0.001).setInteractive();
@@ -91,9 +93,10 @@ export function createMobileControls(scene, options = {}) {
   });
 
   function makeButton(x, y, radius, fill, label, onPress) {
-    const g = scene.add.circle(x, y, radius, fill, m.ALPHA.btn)
-      .setStrokeStyle(3, c.stroke, 0.75)
-      .setInteractive();
+    const useTex = scene.textures.exists(UI_KEYS.SKILL_BTN);
+    const g = useTex
+      ? scene.add.image(x, y, UI_KEYS.SKILL_BTN).setDisplaySize(radius * 2, radius * 2).setAlpha(m.ALPHA.btn).setInteractive()
+      : scene.add.circle(x, y, radius, fill, m.ALPHA.btn).setStrokeStyle(3, c.stroke, 0.75).setInteractive();
     const t = scene.add.text(x, y, label, {
       fontFamily: UI.FONT,
       fontSize: `${Math.round(radius * 0.72)}px`,
@@ -104,12 +107,12 @@ export function createMobileControls(scene, options = {}) {
 
     g.on('pointerdown', () => {
       if (!enabled) return;
-      g.setFillStyle(fill, m.ALPHA.btnPress);
+      if (!useTex) g.setFillStyle(fill, m.ALPHA.btnPress);
       g.setScale(0.92);
       onPress();
     });
-    g.on('pointerup', () => { g.setFillStyle(fill, m.ALPHA.btn); g.setScale(1); });
-    g.on('pointerout', () => { g.setFillStyle(fill, m.ALPHA.btn); g.setScale(1); });
+    g.on('pointerup', () => { if (!useTex) g.setFillStyle(fill, m.ALPHA.btn); g.setScale(1); });
+    g.on('pointerout', () => { if (!useTex) g.setFillStyle(fill, m.ALPHA.btn); g.setScale(1); });
 
     root.add([g, t]);
     return { g, t };

@@ -1,5 +1,5 @@
 import { FROG_PRINCESS } from '../core/Constants.js';
-import { createCharacterSprite, ySort, TEXTURE_KEYS } from '../art/AssetRegistry.js';
+import { createCharacterSprite, setSheetFrame, ySort, TEXTURE_KEYS, SHEET_KEYS } from '../art/AssetRegistry.js';
 
 export class FrogPrincess {
   constructor(scene, x, y) {
@@ -7,7 +7,9 @@ export class FrogPrincess {
     this.onGround = true;
     this.tongueActive = false;
     this.tongue = null;
-    this.sprite = createCharacterSprite(scene, x, y, TEXTURE_KEYS.FROG_PRINCESS, FROG_PRINCESS.HEIGHT * 1.2);
+    this.sprite = createCharacterSprite(
+      scene, x, y, TEXTURE_KEYS.FROG_PRINCESS, FROG_PRINCESS.HEIGHT * 1.2, SHEET_KEYS.FROG_PRINCESS,
+    );
   }
 
   update(keys, jumpPressed) {
@@ -21,13 +23,18 @@ export class FrogPrincess {
     this.onGround = body.blocked.down;
     if (jumpPressed && this.onGround) {
       body.setVelocityY(FROG_PRINCESS.JUMP_VELOCITY);
+      setSheetFrame(this.sprite, 1);
+    } else if (!this.tongueActive) {
+      setSheetFrame(this.sprite, vx !== 0 ? 1 : 0);
     }
+
     ySort(this.sprite);
   }
 
   fireTongue() {
     if (this.tongueActive) return null;
     this.tongueActive = true;
+    setSheetFrame(this.sprite, 2);
     const dir = this.sprite.flipX ? -1 : 1;
     const startX = this.sprite.x + dir * FROG_PRINCESS.WIDTH * 0.3;
     const startY = this.sprite.y - FROG_PRINCESS.HEIGHT * 0.2;
@@ -41,6 +48,7 @@ export class FrogPrincess {
         this.tongue?.destroy();
         this.tongue = null;
         this.tongueActive = false;
+        setSheetFrame(this.sprite, 0);
       },
     });
     return this.tongue;
