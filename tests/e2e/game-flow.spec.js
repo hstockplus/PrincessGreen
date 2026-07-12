@@ -6,6 +6,10 @@ async function waitForGame(page) {
     const g = window.__GAME__;
     return g && g.isBooted && g.canvas;
   }, null, { timeout: 15000 });
+  await page.waitForFunction(() => {
+    const scenes = window.__GAME__.scene.getScenes(true);
+    return scenes.length > 0 && scenes[0]?.scene?.key;
+  }, null, { timeout: 30000 });
 }
 
 async function getSnapshot(page) {

@@ -6,7 +6,7 @@ import { Warrior } from '../entities/Warrior.js';
 import { DialogueManager } from '../systems/DialogueManager.js';
 import { QTESystem } from '../systems/QTESystem.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
-import { drawCastleEnvironment } from '../art/EnvironmentArt.js';
+import { showSceneBackground, BG_KEYS } from '../art/BackgroundArt.js';
 import { createDecorSprite, TEXTURE_KEYS } from '../art/AssetRegistry.js';
 import { createMobileControls } from '../ui/MobileControls.js';
 import castleDialogue from '../../assets/dialogues/castle.json';
@@ -20,7 +20,7 @@ export class CastleScene extends Phaser.Scene {
     gameState.phase = 'castle';
     this.physics.world.gravity.y = 0;
 
-    drawCastleEnvironment(this);
+    showSceneBackground(this, BG_KEYS.CASTLE);
 
     this.add.text(GAME.WIDTH / 2, GAME.HEIGHT * 0.06, '恶龙城堡', {
       fontFamily: UI.FONT,

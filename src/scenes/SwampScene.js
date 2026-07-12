@@ -6,7 +6,7 @@ import { FrogCompanion } from '../entities/FrogCompanion.js';
 import { DialogueManager } from '../systems/DialogueManager.js';
 import { AffectionBar } from '../ui/AffectionBar.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
-import { drawSwampEnvironment } from '../art/EnvironmentArt.js';
+import { showSceneBackground, BG_KEYS } from '../art/BackgroundArt.js';
 import { createDecorSprite, ySort, TEXTURE_KEYS } from '../art/AssetRegistry.js';
 import { createMobileControls } from '../ui/MobileControls.js';
 import swampDialogue from '../../assets/dialogues/swamp.json';
@@ -21,7 +21,7 @@ export class SwampScene extends Phaser.Scene {
     gameState.chapter = 1;
     this.physics.world.gravity.y = 0;
 
-    drawSwampEnvironment(this);
+    showSceneBackground(this, BG_KEYS.SWAMP);
 
     this.add.text(GAME.WIDTH / 2, GAME.HEIGHT * 0.06, '绝望沼泽', {
       fontFamily: UI.FONT,

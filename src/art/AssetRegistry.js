@@ -1,20 +1,20 @@
 import { renderPixelArt } from '../core/PixelRenderer.js';
 import { MOON_PALETTE, SPRITE_SCALE } from '../sprites/palette.js';
 import {
-  WARRIOR_PIXELS,
-  PRINCESS_PIXELS,
-  FROG_PIXELS,
   FROG_PRINCESS_PIXELS,
-  DRAGON_PIXELS,
   TEXTURE_KEYS,
 } from '../sprites/characters.js';
+import { preloadImageAssets } from './BackgroundArt.js';
+
+export function preloadGameAssets(scene) {
+  preloadImageAssets(scene);
+}
 
 export function registerGameAssets(scene) {
-  renderPixelArt(scene, WARRIOR_PIXELS, MOON_PALETTE, TEXTURE_KEYS.WARRIOR, SPRITE_SCALE);
-  renderPixelArt(scene, PRINCESS_PIXELS, MOON_PALETTE, TEXTURE_KEYS.PRINCESS, SPRITE_SCALE);
-  renderPixelArt(scene, FROG_PIXELS, MOON_PALETTE, TEXTURE_KEYS.FROG, SPRITE_SCALE);
-  renderPixelArt(scene, FROG_PRINCESS_PIXELS, MOON_PALETTE, TEXTURE_KEYS.FROG_PRINCESS, SPRITE_SCALE);
-  renderPixelArt(scene, DRAGON_PIXELS, MOON_PALETTE, TEXTURE_KEYS.DRAGON, SPRITE_SCALE);
+  // 蛙仙形态暂无立绘，保留像素 fallback
+  if (!scene.textures.exists(TEXTURE_KEYS.FROG_PRINCESS)) {
+    renderPixelArt(scene, FROG_PRINCESS_PIXELS, MOON_PALETTE, TEXTURE_KEYS.FROG_PRINCESS, SPRITE_SCALE);
+  }
 }
 
 export function createCharacterSprite(scene, x, y, textureKey, targetHeight) {
@@ -23,8 +23,8 @@ export function createCharacterSprite(scene, x, y, textureKey, targetHeight) {
   const sprite = scene.physics.add.sprite(x, y, textureKey);
   sprite.setScale(scale);
   sprite.setOrigin(0.5, 0.92);
-  sprite.body.setSize(img.width * scale * 0.45, targetHeight * 0.35);
-  sprite.body.setOffset(img.width * scale * 0.275, targetHeight * 0.55);
+  sprite.body.setSize(img.width * scale * 0.35, targetHeight * 0.3);
+  sprite.body.setOffset(img.width * scale * 0.325, targetHeight * 0.58);
   sprite.body.setCollideWorldBounds(true);
   return sprite;
 }

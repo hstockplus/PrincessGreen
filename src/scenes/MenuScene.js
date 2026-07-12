@@ -3,6 +3,7 @@ import { GAME, UI, TRANSITION } from '../core/Constants.js';
 import { gameState } from '../core/GameState.js';
 import { eventBus, Events } from '../core/EventBus.js';
 import { drawMenuBackdrop } from '../art/EnvironmentArt.js';
+import { showSceneBackground, BG_KEYS } from '../art/BackgroundArt.js';
 
 const ML = {
   titleGold: '#ffd878',
@@ -23,6 +24,7 @@ export class MenuScene extends Phaser.Scene {
     gameState.reset();
     gameState.phase = 'menu';
     drawMenuBackdrop(this);
+    showSceneBackground(this, BG_KEYS.SWAMP, -1);
 
     const stroke = Math.round(4 * (GAME.WIDTH / 960));
     const titleStyle = {
