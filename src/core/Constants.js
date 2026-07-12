@@ -107,11 +107,11 @@ export const DRAGON = {
 };
 
 export const SCENE_COLORS = {
-  SWAMP_BG: 0x2d5016,
-  SWAMP_WATER: 0x1a3a5c,
-  CASTLE_BG: 0x2c003e,
-  CASTLE_FLOOR: 0x4a4a4a,
-  PRINCESS_BG: 0x1a472a,
+  SWAMP_BG: 0x68a848,
+  SWAMP_WATER: 0x48a0b8,
+  CASTLE_BG: 0x281838,
+  CASTLE_FLOOR: 0xb0a090,
+  PRINCESS_BG: 0x88c868,
 };
 
 export const INTERACT = {

@@ -25,8 +25,8 @@ export class SwampScene extends Phaser.Scene {
     this.add.text(GAME.WIDTH / 2, GAME.HEIGHT * 0.06, '绝望沼泽', {
       fontFamily: UI.FONT,
       fontSize: `${Math.round(GAME.HEIGHT * UI.HEADING_RATIO)}px`,
-      color: '#f0ece0',
-      stroke: '#1a3020',
+      color: '#ffd878',
+      stroke: '#283820',
       strokeThickness: 3,
     }).setOrigin(0.5).setDepth(50);
 

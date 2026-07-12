@@ -24,8 +24,8 @@ export class CastleScene extends Phaser.Scene {
     this.add.text(GAME.WIDTH / 2, GAME.HEIGHT * 0.06, '恶龙城堡', {
       fontFamily: UI.FONT,
       fontSize: `${Math.round(GAME.HEIGHT * UI.HEADING_RATIO)}px`,
-      color: '#f5d78a',
-      stroke: '#2a0820',
+      color: '#ffd878',
+      stroke: '#301020',
       strokeThickness: 3,
     }).setOrigin(0.5).setDepth(50);
 

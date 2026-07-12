@@ -4,6 +4,16 @@ import { gameState } from '../core/GameState.js';
 import { eventBus, Events } from '../core/EventBus.js';
 import { drawMenuBackdrop } from '../art/EnvironmentArt.js';
 
+const ML = {
+  titleGold: '#ffd878',
+  titleStroke: '#382010',
+  subGold: '#e8c888',
+  bodyBlue: '#a8d0f8',
+  btnFill: 0x8b2020,
+  btnStroke: 0xffd060,
+  btnText: '#fff8e8',
+};
+
 export class MenuScene extends Phaser.Scene {
   constructor() {
     super('MenuScene');
@@ -14,13 +24,14 @@ export class MenuScene extends Phaser.Scene {
     gameState.phase = 'menu';
     drawMenuBackdrop(this);
 
+    const stroke = Math.round(4 * (GAME.WIDTH / 960));
     const titleStyle = {
       fontFamily: UI.FONT,
       fontSize: `${Math.round(GAME.HEIGHT * UI.TITLE_RATIO)}px`,
-      color: '#f5d78a',
-      stroke: '#3a2010',
-      strokeThickness: Math.round(4 * (GAME.WIDTH / 960)),
-      shadow: { offsetX: 2, offsetY: 2, color: '#000000', blur: 6, fill: true },
+      color: ML.titleGold,
+      stroke: ML.titleStroke,
+      strokeThickness: stroke,
+      shadow: { offsetX: 2, offsetY: 2, color: '#000000', blur: 8, fill: true },
     };
 
     this.add.text(GAME.WIDTH / 2, GAME.HEIGHT * 0.26, '青蛙公主', titleStyle).setOrigin(0.5).setDepth(10);
@@ -28,22 +39,31 @@ export class MenuScene extends Phaser.Scene {
     this.add.text(GAME.WIDTH / 2, GAME.HEIGHT * 0.38, '背叛与复仇的故事', {
       fontFamily: UI.FONT,
       fontSize: `${Math.round(GAME.HEIGHT * UI.HEADING_RATIO)}px`,
-      color: '#d4c4a8',
+      color: ML.subGold,
     }).setOrigin(0.5).setDepth(10);
 
     this.add.text(GAME.WIDTH / 2, GAME.HEIGHT * 0.5, '第一幕 — 勇士篇', {
       fontFamily: UI.FONT,
       fontSize: `${Math.round(GAME.HEIGHT * UI.BODY_RATIO)}px`,
-      color: '#a8c8ff',
+      color: ML.bodyBlue,
     }).setOrigin(0.5).setDepth(10);
 
-    const btnBg = this.add.rectangle(GAME.WIDTH / 2, GAME.HEIGHT * 0.64, GAME.WIDTH * 0.32, GAME.HEIGHT * 0.08, 0x6b1a1a, 0.9)
-      .setStrokeStyle(3, 0xc9a227).setDepth(10).setInteractive({ useHandCursor: true });
+    const btnW = GAME.WIDTH * 0.34;
+    const btnH = GAME.HEIGHT * 0.085;
+    const btnY = GAME.HEIGHT * 0.64;
 
-    const startBtn = this.add.text(GAME.WIDTH / 2, GAME.HEIGHT * 0.64, '按 Enter 开始游戏', {
+    const btnBg = this.add.rectangle(GAME.WIDTH / 2, btnY, btnW, btnH, ML.btnFill, 0.92)
+      .setStrokeStyle(4, ML.btnStroke).setDepth(10).setInteractive({ useHandCursor: true });
+
+    this.add.rectangle(GAME.WIDTH / 2, btnY, btnW + 8, btnH + 8, 0x000000, 0)
+      .setStrokeStyle(2, ML.btnStroke, 0.4).setDepth(9);
+
+    const startBtn = this.add.text(GAME.WIDTH / 2, btnY, '按 Enter 开始游戏', {
       fontFamily: UI.FONT,
       fontSize: `${Math.round(GAME.HEIGHT * UI.BODY_RATIO)}px`,
-      color: '#fff8e0',
+      color: ML.btnText,
+      stroke: '#402010',
+      strokeThickness: 2,
     }).setOrigin(0.5).setDepth(11);
 
     const start = () => {
