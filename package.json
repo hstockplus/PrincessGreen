@@ -7,6 +7,7 @@
     "dev:open": "vite --open",
     "build": "vite build",
     "preview": "vite preview",
+    "deploy": "npm run build && bash \"$HOME/.agents/skills/here-now/scripts/publish.sh\" dist/ --title \"青蛙公主\" --description \"月影传说风格武侠RPG\" --spa --client cursor",
     "test": "playwright test --project=chromium-headless",
     "test:chapter1": "playwright test chapter1-keyboard --project=chromium-headless",
     "test:browser": "playwright test --project=chrome-browser",
@@ -18,6 +19,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
+    "gh-pages": "^6.3.0",
     "vite": "^7.3.1"
   }
 }
