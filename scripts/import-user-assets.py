@@ -70,6 +70,9 @@ def main():
         split_ui_sheet(ui_src)
         print('ok UI sheet split -> ui/ui_joystick.png + ui/ui_skill_btn.png')
 
+    import subprocess
+    subprocess.run(['python3', str(Path(__file__).parent / 'remove-character-bg.py')], check=True)
+
 
 if __name__ == '__main__':
     main()
