@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { GameConfig } from './core/GameConfig.js';
 import { eventBus, Events } from './core/EventBus.js';
 import { gameState } from './core/GameState.js';
-import { getGameSnapshot, getTestHandlers } from './testing/TestAPI.js';
+import { getGameSnapshot, getTestHandlers, getDialogueChoiceY } from './testing/TestAPI.js';
 
 const game = new Phaser.Game(GameConfig);
 
@@ -37,6 +37,7 @@ window.__TEST__ = {
   pickDialogueChoice: (index) => getTestHandlers().pickDialogueChoice?.(index),
   forceQTESuccess: () => getTestHandlers().forceQTESuccess?.(),
   moveWarrior: (x, y) => getTestHandlers().moveWarrior?.(x, y),
+  getDialogueChoiceY: (index) => getDialogueChoiceY(game, index),
   waitForPhase: (phase, timeoutMs = 10000) =>
     new Promise((resolve, reject) => {
       const start = Date.now();

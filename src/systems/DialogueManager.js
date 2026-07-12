@@ -5,19 +5,21 @@ import { gameState } from '../core/GameState.js';
 const PANEL_PAD = 20 * PX;
 const LINE_GAP = 10 * PX;
 const CHOICE_GAP = 12 * PX;
+const CHOICE_MIN_H = 44 * PX;
+const DIALOGUE_DEPTH = 1100;
 
 export class DialogueManager {
   constructor(scene) {
     this.scene = scene;
     this.data = null;
     this.currentNodeId = null;
-    this.choiceTexts = [];
+    this.choiceItems = [];
     this.blockInput = false;
 
     this.panelTop = GAME.HEIGHT * 0.68;
     this.basePanelH = GAME.HEIGHT * 0.3;
 
-    this.container = scene.add.container(0, 0).setDepth(1000).setVisible(false);
+    this.container = scene.add.container(0, 0).setDepth(DIALOGUE_DEPTH).setVisible(false);
 
     this.panel = scene.add.rectangle(
       GAME.WIDTH / 2,
@@ -25,7 +27,7 @@ export class DialogueManager {
       GAME.WIDTH * 0.92,
       this.basePanelH,
       0x1a1020,
-      0.94
+      0.94,
     );
     this.panel.setStrokeStyle(4 * PX, 0xc9a227);
 
@@ -35,7 +37,7 @@ export class DialogueManager {
       GAME.WIDTH * 0.88,
       3 * PX,
       0x9b2222,
-      0.8
+      0.8,
     );
 
     this.speakerText = scene.add.text(0, 0, '', {
@@ -74,6 +76,7 @@ export class DialogueManager {
     gameState.dialogueActive = true;
     eventBus.emit(Events.DIALOGUE_START);
     this.container.setVisible(true);
+    this.scene.mobile?.setDialogueMode?.(true);
     this.showNode(this.currentNodeId);
   }
 
@@ -97,22 +100,45 @@ export class DialogueManager {
     y += this.bodyText.height + LINE_GAP * 1.5;
 
     if (node.choices?.length) {
+      const rowW = GAME.WIDTH * 0.88;
       node.choices.forEach((choice, index) => {
         const label = `${index + 1}. ${choice.label}`;
-        const text = this.scene.add.text(left, y, label, {
+        const rowH = CHOICE_MIN_H;
+        const rowCenterY = y + rowH / 2;
+
+        const hit = this.scene.add.rectangle(
+          GAME.WIDTH / 2,
+          rowCenterY,
+          rowW,
+          rowH,
+          0x2a2040,
+          0.92,
+        )
+          .setStrokeStyle(2 * PX, 0x6a5a9a)
+          .setDepth(DIALOGUE_DEPTH + 1)
+          .setInteractive({ useHandCursor: true });
+
+        const text = this.scene.add.text(left + 8 * PX, rowCenterY, label, {
           fontFamily: UI.FONT,
           fontSize: `${Math.round(GAME.HEIGHT * UI.SMALL_RATIO)}px`,
           color: '#c8d8ff',
-          backgroundColor: '#2a2040',
-          padding: { x: 10 * PX, y: 6 * PX },
+        }).setOrigin(0, 0.5).setDepth(DIALOGUE_DEPTH + 2);
+
+        const pick = () => this.pickChoice(index);
+        hit.on('pointerover', () => {
+          hit.setFillStyle(0x3a3060, 0.95);
+          text.setColor('#ffffff');
         });
+        hit.on('pointerout', () => {
+          hit.setFillStyle(0x2a2040, 0.92);
+          text.setColor('#c8d8ff');
+        });
+        hit.on('pointerdown', pick);
         text.setInteractive({ useHandCursor: true });
-        text.on('pointerover', () => text.setColor('#ffffff'));
-        text.on('pointerout', () => text.setColor('#c8d8ff'));
-        text.on('pointerdown', () => this.pickChoice(index));
-        this.choiceTexts.push(text);
-        this.container.add(text);
-        y += text.height + CHOICE_GAP;
+        text.on('pointerdown', pick);
+
+        this.choiceItems.push(hit, text);
+        y += rowH + CHOICE_GAP;
       });
     }
 
@@ -151,6 +177,14 @@ export class DialogueManager {
     }
   }
 
+  /** 移动端：普攻/技能键映射选项 0/1/2 */
+  pickFromMobileButtons({ attack, skill1, skill2, skill3 }) {
+    if (attack || skill1) return this.pickChoice(0);
+    if (skill2) return this.pickChoice(1);
+    if (skill3) return this.pickChoice(2);
+    return false;
+  }
+
   finishNode(node) {
     if (node.setFlag) {
       gameState.setFlag(node.setFlag);
@@ -171,12 +205,13 @@ export class DialogueManager {
     this.layoutPanel(this.basePanelH);
     this.container.setVisible(false);
     gameState.dialogueActive = false;
+    this.scene.mobile?.setDialogueMode?.(false);
     eventBus.emit(Events.DIALOGUE_END);
   }
 
   clearChoices() {
-    this.choiceTexts.forEach((t) => t.destroy());
-    this.choiceTexts = [];
+    this.choiceItems.forEach((item) => item.destroy());
+    this.choiceItems = [];
   }
 
   destroy() {

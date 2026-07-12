@@ -93,7 +93,14 @@ export class SwampScene extends Phaser.Scene {
   update() {
     this.mobile.setEnabled(!gameState.dialogueActive && !gameState.qteActive);
 
-    if (gameState.dialogueActive || gameState.qteActive) {
+    if (gameState.dialogueActive) {
+      this.warrior.sprite.body.setVelocity(0, 0);
+      const btn = this.mobile.consumeButtons();
+      this.dialogue.pickFromMobileButtons(btn);
+      return;
+    }
+
+    if (gameState.qteActive) {
       this.warrior.sprite.body.setVelocity(0, 0);
       return;
     }

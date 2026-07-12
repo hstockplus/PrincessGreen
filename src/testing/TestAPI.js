@@ -10,6 +10,14 @@ export function registerTestHandler(name, fn) {
   handlers[name] = fn;
 }
 
+export function getDialogueChoiceY(game, index = 0) {
+  const scene = game?.scene?.getScenes(true)?.[0];
+  const dialogue = scene?.dialogue;
+  if (!dialogue?.choiceItems?.length) return 0;
+  const hit = dialogue.choiceItems[index * 2];
+  return hit?.y ?? 0;
+}
+
 export function getTestHandlers() {
   return handlers;
 }

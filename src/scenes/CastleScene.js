@@ -124,7 +124,14 @@ export class CastleScene extends Phaser.Scene {
 
   update() {
     const inQte = gameState.qteActive;
-    this.mobile.setEnabled(!gameState.dialogueActive);
+    this.mobile.setEnabled(!gameState.dialogueActive && !inQte);
+
+    if (gameState.dialogueActive) {
+      this.warrior.sprite.body.setVelocity(0, 0);
+      const btn = this.mobile.consumeButtons();
+      this.dialogue.pickFromMobileButtons(btn);
+      return;
+    }
 
     const btn = this.mobile.consumeButtons();
     if (inQte && btn.attack) {
@@ -136,7 +143,7 @@ export class CastleScene extends Phaser.Scene {
 
     this.qte.update();
 
-    if (gameState.dialogueActive || (inQte && this.state !== 'explore')) {
+    if (inQte && this.state !== 'explore') {
       this.warrior.sprite.body.setVelocity(0, 0);
       return;
     }

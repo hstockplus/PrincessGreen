@@ -6,6 +6,7 @@ const NOOP = {
   getMovement: () => ({ left: false, right: false, up: false, down: false }),
   consumeButtons: () => ({ attack: false, skill1: false, skill2: false, skill3: false }),
   setEnabled: () => {},
+  setDialogueMode: () => {},
   setLabels: () => {},
   setSkillVisible: () => {},
   destroy: () => {},
@@ -146,8 +147,21 @@ export function createMobileControls(scene, options = {}) {
 
   root.add([joyBase, joyThumb, joyZone]);
 
+  function setInteractives(active) {
+    if (active) {
+      joyZone.setInteractive();
+      attackBtn.g.setInteractive();
+      applySkillVisibility();
+    } else {
+      joyZone.disableInteractive();
+      attackBtn.g.disableInteractive();
+      skillBtns.forEach((btn) => btn.g.disableInteractive());
+    }
+  }
+
   return {
     getMovement() {
+      if (!enabled) return { left: false, right: false, up: false, down: false };
       const { x, y } = joyVec;
       const dz = m.DEAD_ZONE;
       return {
@@ -170,6 +184,21 @@ export function createMobileControls(scene, options = {}) {
     setEnabled(value) {
       enabled = value;
       root.setAlpha(value ? 1 : 0.35);
+      setInteractives(value);
+    },
+
+    /** 对话中隐藏并禁用触控层，避免挡住选项 */
+    setDialogueMode(inDialogue) {
+      if (inDialogue) {
+        enabled = false;
+        root.setVisible(false);
+        setInteractives(false);
+      } else {
+        root.setVisible(true);
+        enabled = true;
+        root.setAlpha(1);
+        setInteractives(true);
+      }
     },
 
     setLabels({ attack, skills } = {}) {
