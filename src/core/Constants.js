@@ -187,14 +187,15 @@ export const UI = {
 // --- Mobile MOBA-style controls (王者荣耀式) ---
 
 export const MOBILE = {
-  JOY_BASE: GAME.WIDTH * 0.15,
-  JOY_THUMB: GAME.WIDTH * 0.065,
-  JOY_MAX_DRAG: GAME.WIDTH * 0.08,
+  JOY_BASE: GAME.WIDTH * 0.12,
+  JOY_THUMB: GAME.WIDTH * 0.052,
+  JOY_MAX_DRAG: GAME.WIDTH * 0.065,
+  JOY_INNER_DEAD: 18 * PX,
   ATTACK_SIZE: GAME.WIDTH * 0.14,
   SKILL_SIZE: GAME.WIDTH * 0.1,
   MARGIN_X: GAME.WIDTH * 0.07,
   MARGIN_BOTTOM: Math.max(GAME.HEIGHT * 0.08, SAFE_ZONE.BOTTOM + 16 * DPR),
-  DEAD_ZONE: 0.22,
+  DEAD_ZONE: 0.38,
   DEPTH: 1000,
   COLORS: {
     joyBase: 0xffffff,

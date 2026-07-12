@@ -55,7 +55,8 @@ export function createMobileControls(scene, options = {}) {
     const tx = dx * clamped;
     const ty = dy * clamped;
     joyThumb.setPosition(joyCx + tx, joyCy + ty);
-    joyVec = dist < 8 ? { x: 0, y: 0 } : { x: tx / max, y: ty / max };
+    const innerDead = m.JOY_INNER_DEAD ?? 12;
+    joyVec = dist < innerDead ? { x: 0, y: 0 } : { x: tx / max, y: ty / max };
   }
 
   function releaseJoystick(pointer) {
@@ -71,7 +72,7 @@ export function createMobileControls(scene, options = {}) {
     : scene.add.circle(joyCx, joyCy, m.JOY_BASE, c.joyBase, m.ALPHA.base).setStrokeStyle(3, c.stroke, 0.45);
   const joyThumb = scene.add.circle(joyCx, joyCy, m.JOY_THUMB, c.joyThumb, m.ALPHA.thumb)
     .setStrokeStyle(2, c.stroke, 0.65);
-  const joyZone = scene.add.circle(joyCx, joyCy, m.JOY_BASE + 12, 0x000000, 0.001).setInteractive();
+  const joyZone = scene.add.circle(joyCx, joyCy, m.JOY_BASE + 8, 0x000000, 0.001).setInteractive();
   joyZone.on('pointerdown', (pointer) => {
     if (!enabled) return;
     joyActive = true;

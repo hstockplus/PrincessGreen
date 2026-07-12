@@ -2,7 +2,6 @@ import Phaser from 'phaser';
 import { GAME, UI, TRANSITION } from '../core/Constants.js';
 import { gameState } from '../core/GameState.js';
 import { eventBus, Events } from '../core/EventBus.js';
-import { drawMenuBackdrop } from '../art/EnvironmentArt.js';
 import { showSceneBackground, BG_KEYS } from '../art/BackgroundArt.js';
 
 const ML = {
@@ -23,8 +22,7 @@ export class MenuScene extends Phaser.Scene {
   create() {
     gameState.reset();
     gameState.phase = 'menu';
-    drawMenuBackdrop(this);
-    showSceneBackground(this, BG_KEYS.MENU, -1);
+    showSceneBackground(this, BG_KEYS.MENU);
 
     const stroke = Math.round(4 * (GAME.WIDTH / 960));
     const titleStyle = {
