@@ -13,6 +13,18 @@ game.events.once('ready', () => {
   }
 });
 
+// 横竖屏切换时重新计算画布尺寸
+let lastLandscape = window.innerWidth >= window.innerHeight;
+const onViewportChange = () => {
+  const landscape = window.innerWidth >= window.innerHeight;
+  if (landscape !== lastLandscape) {
+    lastLandscape = landscape;
+    window.location.reload();
+  }
+};
+window.addEventListener('orientationchange', () => setTimeout(onViewportChange, 300));
+window.addEventListener('resize', onViewportChange);
+
 window.__GAME__ = game;
 window.__GAME_STATE__ = gameState;
 window.__EVENT_BUS__ = eventBus;

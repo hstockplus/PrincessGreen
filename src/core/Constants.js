@@ -3,15 +3,13 @@
 // Device pixel ratio (capped at 2 for mobile GPU performance)
 export const DPR = Math.min(window.devicePixelRatio || 1, 2);
 
-// Force portrait mode — set to true for vertical games (dodgers, runners, collectors).
-// On desktop, Scale.FIT + CENTER_BOTH will pillarbox with black bars automatically.
-// Set to false (default) for games that should adapt to device orientation.
-const FORCE_PORTRAIT = false;
-const _isPortrait = FORCE_PORTRAIT || window.innerHeight > window.innerWidth;
+// 横版全屏 — 始终 16:9 横屏，不随设备竖屏切换为竖版布局
+const FORCE_LANDSCAPE = true;
+const _isPortrait = !FORCE_LANDSCAPE && window.innerHeight > window.innerWidth;
 
-// Design dimensions (logical game units at 1x scale)
-const _designW = _isPortrait ? 540 : 960;
-const _designH = _isPortrait ? 960 : 540;
+// Design dimensions (logical game units at 1x scale) — 16:9 横版
+const _designW = 960;
+const _designH = 540;
 const _designAspect = _designW / _designH;
 
 // Canvas dimensions = device pixel area, maintaining design aspect ratio.
@@ -38,7 +36,11 @@ export const PX = _canvasW / _designW;
 export const GAME = {
   WIDTH: _canvasW,
   HEIGHT: _canvasH,
+  DESIGN_W: _designW,
+  DESIGN_H: _designH,
   IS_PORTRAIT: _isPortrait,
+  IS_LANDSCAPE: true,
+  ASPECT: _designAspect,
   GRAVITY: 800 * PX,
 };
 
