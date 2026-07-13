@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { registerGameAssets, preloadGameAssets } from '../art/AssetRegistry.js';
+import { startAmbientMusic } from '../systems/SimpleSFX.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -12,6 +13,7 @@ export class BootScene extends Phaser.Scene {
 
   create() {
     registerGameAssets(this);
+    startAmbientMusic();
     this.scene.start('MenuScene');
   }
 }

@@ -22,8 +22,28 @@ function getCtx() {
 
 function resumeAudio() {
   const audio = getCtx();
-  if (audio?.state === 'suspended') audio.resume();
+  if (!audio) return null;
+  if (audio.state === 'suspended') {
+    audio.resume().catch(() => {});
+  }
   return audio;
+}
+
+let pendingMode = 'ambient';
+
+function attachAudioUnlock() {
+  if (attachAudioUnlock.done) return;
+  attachAudioUnlock.done = true;
+  const audio = getCtx();
+  if (!audio) return;
+  const onRunning = () => {
+    if (audio.state === 'running' && pendingMode && pendingMode !== 'none') {
+      if (musicMode !== pendingMode) setMusicMode(pendingMode);
+      else ensureMusicPlaying();
+    }
+  };
+  audio.addEventListener('statechange', onRunning);
+  onRunning();
 }
 
 function runSequencer(audio, { bpm, stepsPerBeat = 2, layers }) {
@@ -124,31 +144,59 @@ function runBattleSequencer(audio) {
 }
 
 function setMusicMode(mode) {
-  if (musicMode === mode) return;
+  if (musicMode === mode && musicHandle) return;
   if (musicHandle) {
     musicHandle.stop();
     musicHandle = null;
   }
   musicMode = mode;
   if (mode === 'none') return;
+  pendingMode = mode;
   const audio = resumeAudio();
-  if (!audio) return;
+  if (!audio || audio.state !== 'running') return;
   musicHandle = mode === 'battle' ? runBattleSequencer(audio) : runAmbientSequencer(audio);
 }
 
 export function ensureMusicPlaying() {
   const audio = resumeAudio();
-  if (!audio || !musicMode || musicMode === 'none') return;
-  const mode = musicMode;
-  setMusicMode('none');
-  setMusicMode(mode);
+  if (!audio) return;
+  const mode = musicMode && musicMode !== 'none' ? musicMode : pendingMode;
+  if (!mode || mode === 'none') return;
+  if (audio.state !== 'running') {
+    pendingMode = mode;
+    return;
+  }
+  if (musicMode !== mode) setMusicMode(mode);
+  else {
+    const saved = musicMode;
+    setMusicMode('none');
+    setMusicMode(saved);
+  }
+}
+
+export function initAudio() {
+  getCtx();
+  attachAudioUnlock();
+  pendingMode = 'ambient';
+  startAmbientMusic();
+}
+
+export function unlockAudio() {
+  const audio = resumeAudio();
+  if (!audio) return Promise.resolve(false);
+  return audio.resume().then(() => {
+    ensureMusicPlaying();
+    return audio.state === 'running';
+  }).catch(() => false);
 }
 
 export function startAmbientMusic() {
+  pendingMode = 'ambient';
   setMusicMode('ambient');
 }
 
 export function startBattleMusic() {
+  pendingMode = 'battle';
   setMusicMode('battle');
 }
 

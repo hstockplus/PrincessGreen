@@ -3,8 +3,10 @@ import { GameConfig } from './core/GameConfig.js';
 import { eventBus, Events } from './core/EventBus.js';
 import { gameState } from './core/GameState.js';
 import { initOrientationFullscreen } from './core/FullscreenManager.js';
+import { initAudio } from './systems/SimpleSFX.js';
 import { getGameSnapshot, getTestHandlers, getDialogueChoiceY } from './testing/TestAPI.js';
 
+initAudio();
 initOrientationFullscreen();
 
 const game = new Phaser.Game(GameConfig);
@@ -13,6 +15,7 @@ game.events.once('ready', () => {
   if (game.canvas) {
     game.canvas.setAttribute('tabindex', '1');
     game.canvas.style.outline = 'none';
+    game.canvas.style.touchAction = 'none';
   }
 });
 
