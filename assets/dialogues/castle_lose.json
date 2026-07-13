@@ -1,0 +1,31 @@
+{
+  "start": "princess_saves",
+  "nodes": {
+    "princess_saves": {
+      "speaker": "旁白",
+      "text": "你倒在地上——公主冲过来，几招便将恶龙击退！",
+      "next": "moved"
+    },
+    "moved": {
+      "speaker": "勇士",
+      "text": "公主……你救了我。我……太感动了。",
+      "next": "kiss"
+    },
+    "kiss": {
+      "speaker": "旁白",
+      "text": "勇士情不自禁，送给公主一个吻。",
+      "next": "shock"
+    },
+    "shock": {
+      "speaker": "公主",
+      "text": "你偷袭我！我想起小蝌蚪的童年，在夕阳下游泳……",
+      "next": "transform"
+    },
+    "transform": {
+      "speaker": "旁白",
+      "text": "公主的身体慢慢缩小，皮肤泛起绿色——她变回了青蛙。",
+      "end": true,
+      "trigger": "chapterTwo"
+    }
+  }
+}

@@ -3,8 +3,9 @@ import { gameState } from '../core/GameState.js';
 const handlers = {
   pickDialogueChoice: null,
   advanceDialogue: null,
-  forceQTESuccess: null,
   forceBattleWin: null,
+  forceBattleLose: null,
+  forceEscape: null,
   exitToCastle: null,
   moveWarrior: null,
 };
@@ -37,6 +38,7 @@ export function getGameSnapshot(game) {
     flags: { ...gameState.flags },
     dragonDefeated: gameState.dragonDefeated,
     warriorDefeated: gameState.warriorDefeated,
+    warriorEscaped: gameState.warriorEscaped,
     storyComplete: gameState.storyComplete,
     dialogueActive: gameState.dialogueActive,
     qteActive: gameState.qteActive,
@@ -48,11 +50,7 @@ export function getGameSnapshot(game) {
       : scene?.player
         ? { x: Math.round(scene.player.x), y: Math.round(scene.player.y) }
         : null,
-    qte: scene?.battle?.qte?.active
-      ? { ringRadius: scene.battle.qte.ringRadius, hits: scene.battle.qte.hits, targetRadius: scene.battle.qte.target?.radius }
-      : scene?.qte?.active
-        ? { ringRadius: scene.qte.ringRadius, hits: scene.qte.hits, targetRadius: scene.qte.target?.radius }
-        : null,
+    qte: null,
     battle: scene?.battle
       ? { warriorHp: scene.battle.warriorHp, dragonHp: scene.battle.dragonHp, active: scene.battle.active }
       : null,

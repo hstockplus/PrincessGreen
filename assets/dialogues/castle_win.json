@@ -1,0 +1,36 @@
+{
+  "start": "dragon_dead",
+  "nodes": {
+    "dragon_dead": {
+      "speaker": "旁白",
+      "text": "恶龙倒下了。公主冲过来，脸色煞白。",
+      "next": "angry"
+    },
+    "angry": {
+      "speaker": "公主",
+      "text": "我的老天爷，你咋把它打死了呢？那样就没有了魔法，我只能寻找其他的龙……",
+      "next": "faint"
+    },
+    "faint": {
+      "speaker": "旁白",
+      "text": "公主气晕过去，倒在地上。",
+      "next": "kiss_wake"
+    },
+    "kiss_wake": {
+      "speaker": "旁白",
+      "text": "你俯身吻了她，想把她唤醒。",
+      "next": "shock"
+    },
+    "shock": {
+      "speaker": "公主",
+      "text": "你偷袭我！我想起小蝌蚪的童年，在夕阳下游泳……",
+      "next": "transform"
+    },
+    "transform": {
+      "speaker": "旁白",
+      "text": "公主的身体慢慢缩小，皮肤泛起绿色——她变回了青蛙。",
+      "end": true,
+      "trigger": "chapterTwo"
+    }
+  }
+}

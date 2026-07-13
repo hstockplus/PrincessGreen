@@ -127,7 +127,7 @@ export async function keyboardCompleteQTE(page) {
 
 export async function advanceThroughDialogue(page) {
   await focusCanvas(page);
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 50; i++) {
     const active = await page.evaluate(() => window.__GAME_STATE__.dialogueActive);
     if (!active) return;
     await page.evaluate(() => window.__TEST__.advanceDialogue?.());

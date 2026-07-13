@@ -1,17 +1,23 @@
 import Phaser from 'phaser';
-import { GAME, UI, INTERACT, PRINCESS, TRANSITION, FROG } from '../core/Constants.js';
+import { GAME, UI, PRINCESS, TRANSITION, FROG } from '../core/Constants.js';
 import { gameState } from '../core/GameState.js';
 import { eventBus, Events } from '../core/EventBus.js';
 import { Warrior } from '../entities/Warrior.js';
 import { Dragon } from '../entities/Dragon.js';
 import { DialogueManager } from '../systems/DialogueManager.js';
 import { BattleSystem } from '../systems/BattleSystem.js';
-import { DefeatOverlay } from '../ui/DefeatOverlay.js';
+import { playHelpCry } from '../systems/SimpleSFX.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
 import { showSceneBackground, BG_KEYS } from '../art/BackgroundArt.js';
 import { createDecorSprite, TEXTURE_KEYS, SHEET_KEYS } from '../art/AssetRegistry.js';
 import { createMobileControls } from '../ui/MobileControls.js';
-import castleDialogue from '../../assets/dialogues/castle.json';
+import castleIntro from '../../assets/dialogues/castle_intro.json';
+import castleWin from '../../assets/dialogues/castle_win.json';
+import castleLose from '../../assets/dialogues/castle_lose.json';
+
+const REVEAL_X = GAME.WIDTH * 0.52;
+const REVEAL_Y = GAME.HEIGHT * 0.52;
+const APPROACH_TRIGGER = GAME.WIDTH * 0.38;
 
 export class CastleScene extends Phaser.Scene {
   constructor() {
@@ -33,34 +39,35 @@ export class CastleScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(50);
 
     this.warrior = new Warrior(this, GAME.WIDTH * 0.12, GAME.HEIGHT * 0.62);
-    this.dragonEntity = new Dragon(this, GAME.WIDTH * 0.5, GAME.HEIGHT * 0.48);
+    this.dragonEntity = new Dragon(this, REVEAL_X, REVEAL_Y);
+    this.dragonEntity.sprite.setVisible(false);
 
     this.princess = createDecorSprite(
-      this, GAME.WIDTH * 0.78, GAME.HEIGHT * 0.58,
-      TEXTURE_KEYS.PRINCESS, PRINCESS.HEIGHT, 28, 0, SHEET_KEYS.PRINCESS
+      this, GAME.WIDTH * 0.85, GAME.HEIGHT * 0.58,
+      TEXTURE_KEYS.PRINCESS, PRINCESS.HEIGHT, 28, 0, SHEET_KEYS.PRINCESS,
     );
     this.princess.setVisible(false);
-    this.princess.setInteractive({ useHandCursor: true });
-    this.princess.on('pointerdown', () => {
-      if (this.princess.visible && !gameState.dialogueActive) {
-        this.dialogue.start(castleDialogue);
-      }
-    });
+
+    this.helpText = this.add.text(GAME.WIDTH / 2, GAME.HEIGHT * 0.18, '', {
+      fontFamily: UI.FONT,
+      fontSize: `${Math.round(GAME.HEIGHT * UI.HEADING_RATIO)}px`,
+      color: '#ff8888',
+      stroke: '#000000',
+      strokeThickness: 4,
+    }).setOrigin(0.5).setDepth(60).setVisible(false);
 
     this.dialogue = new DialogueManager(this);
-
-    this.defeatOverlay = new DefeatOverlay(this, {
-      onRetry: () => this.battle?.retry(),
-    });
 
     this.battle = new BattleSystem(this, {
       warrior: this.warrior,
       dragon: this.dragonEntity,
-      onVictory: () => this.onDragonDefeated(),
-      onDefeat: () => this.defeatOverlay.show(),
+      onVictory: () => this.onBattleVictory(),
+      onDefeat: () => this.onBattleDefeat(),
     });
+    this.battle.warriorBar.container.setVisible(false);
+    this.battle.dragonBar.container.setVisible(false);
+    this.battle.hint.setVisible(false);
 
-    this.state = gameState.dragonDefeated ? 'explore' : 'battle';
     this.hint = this.add.text(GAME.WIDTH / 2, GAME.HEIGHT * 0.93, '', {
       fontFamily: UI.FONT,
       fontSize: `${Math.round(GAME.HEIGHT * UI.SMALL_RATIO)}px`,
@@ -82,31 +89,46 @@ export class CastleScene extends Phaser.Scene {
       skillEnabled: [true, true, false],
     });
 
-    if (!gameState.dragonDefeated) {
-      this.hint.setText('WASD 闪避 · 恶龙虚弱时按空格/普攻反击');
-      this.mobile.setLabels({ attack: '普攻', skills: ['斩', '谈', ''] });
-      this.battle.start();
-      this.dragonEntity.sprite.setVisible(true);
+    this.revealDone = false;
+    this.postDialogue = null;
+
+    if (gameState.dragonDefeated) {
+      this.state = 'done';
+      this.hint.setVisible(false);
     } else {
-      this.onDragonDefeated(false);
-      this.dragonEntity.sprite.setVisible(false);
-      this.battle.active = false;
-      this.battle.hint.setVisible(false);
-      this.battle.warriorBar.container.setVisible(false);
-      this.battle.dragonBar.container.setVisible(false);
+      this.state = 'approach';
+      this.hint.setText('朝城堡深处前进……');
+      this.mobile.setLabels({ attack: '交互', skills: ['行', '谈', ''] });
+      this.playHelpCry();
     }
 
     this.cameras.main.fadeIn(TRANSITION.FADE_DURATION, 0, 0, 0);
 
     registerTestHandler('pickDialogueChoice', (index) => this.dialogue.pickChoice(index));
-    registerTestHandler('forceQTESuccess', () => {
-      if (this.battle?.qte?.active) this.battle.qte.finish(true);
-    });
+    registerTestHandler('advanceDialogue', () => this.dialogue.advance());
     registerTestHandler('forceBattleWin', () => {
-      if (this.state !== 'battle' || !this.battle) return;
-      this.battle.dragonHp = 0;
-      this.battle.active = false;
-      this.onDragonDefeated();
+      if (this.state === 'battle' && this.battle?.active) {
+        this.battle.dragonHp = 0;
+        this.battle.active = false;
+        this.onBattleVictory();
+      } else if (this.state === 'approach' || this.state === 'confirm') {
+        this.skipToBattle();
+        this.battle.dragonHp = 0;
+        this.battle.active = false;
+        this.onBattleVictory();
+      }
+    });
+    registerTestHandler('forceBattleLose', () => {
+      if (this.state === 'battle' && this.battle?.active) {
+        this.battle.warriorHp = 0;
+        this.battle.active = false;
+        this.onBattleDefeat();
+      } else if (this.state === 'approach' || this.state === 'confirm') {
+        this.skipToBattle();
+        this.battle.warriorHp = 0;
+        this.battle.active = false;
+        this.onBattleDefeat();
+      }
     });
     registerTestHandler('moveWarrior', (x, y) => {
       this.warrior.sprite.setPosition(x, y);
@@ -114,81 +136,152 @@ export class CastleScene extends Phaser.Scene {
     });
   }
 
-  onDragonDefeated(animate = true) {
-    gameState.dragonDefeated = true;
-    eventBus.emit(Events.DRAGON_DEFEATED);
-    this.dragonEntity.sprite.setVisible(false);
-    this.battle.active = false;
-    this.battle.hint.setVisible(false);
-    this.battle.warriorBar.container.setVisible(false);
-    this.battle.dragonBar.container.setVisible(false);
-    this.battle.warning.setVisible(false);
+  playHelpCry() {
+    this.helpText.setText('救命——！');
+    this.helpText.setVisible(true);
+    playHelpCry();
+    this.time.delayedCall(1200, () => {
+      if (this.state === 'approach') {
+        this.helpText.setText('救命——！（这声音不像公主……）');
+      }
+    });
+  }
+
+  skipToBattle() {
+    this.helpText.setVisible(false);
+    this.princess.setVisible(false);
+    this.dragonEntity.sprite.setVisible(true);
+    this.dragonEntity.reset(REVEAL_X, REVEAL_Y);
+    this.state = 'battle';
+    this.battle.start();
+    this.hint.setText('WASD 移动 · 空格/普攻发射激光');
+    this.mobile.setLabels({ attack: '激光', skills: ['斩', '谈', ''] });
+  }
+
+  triggerReveal() {
+    if (this.revealDone) return;
+    this.revealDone = true;
+    this.state = 'reveal';
+    this.helpText.setVisible(false);
+    this.hint.setText('');
+
+    this.dragonEntity.sprite.setVisible(true);
+    this.dragonEntity.sprite.setPosition(REVEAL_X + 40, REVEAL_Y);
     this.princess.setVisible(true);
-    this.state = 'explore';
-    this.hint.setText('靠近公主，交互键对话');
-    this.mobile.setLabels({ attack: '交互', skills: ['谈', '行', ''] });
-    if (animate) this.cameras.main.flash(200, 255, 220, 180);
+    this.princess.setPosition(GAME.WIDTH * 0.78, GAME.HEIGHT * 0.55);
+
+    this.tweens.add({
+      targets: this.dragonEntity.sprite,
+      x: REVEAL_X - 30,
+      duration: 600,
+      yoyo: true,
+      repeat: 2,
+    });
+    this.tweens.add({
+      targets: this.princess,
+      x: REVEAL_X + 20,
+      duration: 1800,
+      onComplete: () => {
+        this.state = 'confirm';
+        this.dialogue.start(castleIntro);
+      },
+    });
   }
 
   onDialogueTrigger(trigger) {
-    if (trigger === 'chapterTwo') this.startChapterTwo();
+    if (trigger === 'startBattle') {
+      this.startBattle();
+    } else if (trigger === 'chapterTwo') {
+      this.playFrogTransform();
+    }
   }
 
   onDialogueComplete() {}
 
-  startChapterTwo() {
+  startBattle() {
+    this.state = 'battle';
+    this.princess.setVisible(false);
+    this.dragonEntity.reset(REVEAL_X, REVEAL_Y);
+    this.dragonEntity.sprite.setVisible(true);
+    this.warrior.sprite.setPosition(GAME.WIDTH * 0.2, GAME.HEIGHT * 0.6);
+    this.battle.start();
+    this.hint.setText('WASD 移动 · 空格/普攻发射激光');
+    this.mobile.setLabels({ attack: '激光', skills: ['斩', '谈', ''] });
+  }
+
+  onBattleVictory() {
+    gameState.setFlag('battleOutcome', 'win');
+    gameState.dragonDefeated = true;
+    eventBus.emit(Events.DRAGON_DEFEATED);
+    this.dragonEntity.sprite.setVisible(false);
+    this.battle.stop();
+    this.princess.setVisible(true);
+    this.princess.setPosition(GAME.WIDTH * 0.65, GAME.HEIGHT * 0.55);
+    this.state = 'postBattle';
+    this.postDialogue = castleWin;
+    this.dialogue.start(castleWin);
+  }
+
+  onBattleDefeat() {
+    gameState.setFlag('battleOutcome', 'lose');
+    this.battle.stop();
+    this.state = 'postBattle';
+    this.runLoseCutscene();
+  }
+
+  runLoseCutscene() {
+    this.princess.setVisible(true);
+    this.princess.setPosition(GAME.WIDTH * 0.75, GAME.HEIGHT * 0.55);
+    this.dragonEntity.sprite.setVisible(true);
+
+    this.tweens.add({
+      targets: this.princess,
+      x: this.dragonEntity.x,
+      duration: 800,
+      onComplete: () => {
+        this.cameras.main.flash(300, 255, 255, 255);
+        this.dragonEntity.sprite.setVisible(false);
+        gameState.dragonDefeated = true;
+        eventBus.emit(Events.DRAGON_DEFEATED);
+        this.postDialogue = castleLose;
+        this.dialogue.start(castleLose);
+      },
+    });
+  }
+
+  playFrogTransform() {
+    gameState.setFlag('kissedPrincess', true);
+    gameState.setFlag('princessRevealedFrog', true);
+    gameState.dragonDefeated = true;
     gameState.chapter = 2;
-    gameState.phase = 'princess';
     eventBus.emit(Events.KISS_REVEAL);
     eventBus.emit(Events.CHAPTER_CHANGED, { chapter: 2 });
 
-    this.princess.setFrame(2);
+    const px = this.princess.x;
+    const py = this.princess.y;
     this.princess.setVisible(false);
-    const frogReveal = createDecorSprite(this, this.princess.x, this.princess.y, TEXTURE_KEYS.FROG, FROG.HEIGHT * 1.1, 35);
-    this.tweens.add({ targets: frogReveal, scaleX: frogReveal.scaleX * 1.3, scaleY: frogReveal.scaleY * 1.3, duration: 600 });
 
-    this.cameras.main.fadeOut(800, 0, 0, 0);
-    this.time.delayedCall(900, () => this.scene.start('PrincessScene'));
+    const frogReveal = createDecorSprite(this, px, py, TEXTURE_KEYS.FROG, FROG.HEIGHT * 1.1, 35);
+    frogReveal.setScale(0.3);
+    this.tweens.add({
+      targets: frogReveal,
+      scaleX: frogReveal.scaleX * 4,
+      scaleY: frogReveal.scaleY * 4,
+      duration: 2000,
+      ease: 'Sine.easeInOut',
+      onComplete: () => {
+        this.cameras.main.fadeOut(800, 0, 0, 0);
+        this.time.delayedCall(900, () => this.scene.start('PrincessScene'));
+      },
+    });
   }
 
   update() {
-    const inQte = gameState.qteActive;
-
-    if (this.state === 'battle' && this.battle.active) {
-      this.mobile.setEnabled(!gameState.dialogueActive && !inQte);
-
-      if (gameState.dialogueActive) {
-        this.warrior.sprite.body.setVelocity(0, 0);
-        const btn = this.mobile.consumeButtons();
-        if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
-          this.dialogue.advance();
-        }
-        this.dialogue.pickFromMobileButtons(btn);
-        return;
-      }
-
-      const btn = this.mobile.consumeButtons();
-      if (inQte && (btn.attack || btn.skill1 || Phaser.Input.Keyboard.JustDown(this.spaceKey))) {
-        this.battle.qte.tryHit();
-      }
-
-      const move = this.mobile.getMovement();
-      this.battle.update(
-        {
-          left: this.wasd.left.isDown || move.left,
-          right: this.wasd.right.isDown || move.right,
-          up: this.wasd.up.isDown || move.up,
-          down: this.wasd.down.isDown || move.down,
-        },
-        this.time.now
-      );
-      return;
-    }
-
-    this.mobile.setEnabled(!gameState.dialogueActive);
+    if (this.state === 'done') return;
 
     if (gameState.dialogueActive) {
       this.warrior.sprite.body.setVelocity(0, 0);
+      this.mobile.setEnabled(true);
       const btn = this.mobile.consumeButtons();
       if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
         this.dialogue.advance();
@@ -197,27 +290,46 @@ export class CastleScene extends Phaser.Scene {
       return;
     }
 
-    if (this.state !== 'explore') return;
+    if (this.state === 'approach') {
+      this.mobile.setEnabled(true);
+      const move = this.mobile.getMovement();
+      this.warrior.update({
+        left: this.wasd.left.isDown || move.left,
+        right: this.wasd.right.isDown || move.right,
+        up: this.wasd.up.isDown || move.up,
+        down: this.wasd.down.isDown || move.down,
+      });
+      this.clampWarriorExplore();
 
-    const move = this.mobile.getMovement();
-    this.warrior.update({
-      left: this.wasd.left.isDown || move.left,
-      right: this.wasd.right.isDown || move.right,
-      up: this.wasd.up.isDown || move.up,
-      down: this.wasd.down.isDown || move.down,
-    });
+      if (this.warrior.x >= APPROACH_TRIGGER) {
+        this.triggerReveal();
+      }
+      return;
+    }
 
-    const btn = this.mobile.consumeButtons();
-    const interact = Phaser.Input.Keyboard.JustDown(this.interactKey) || btn.attack || btn.skill1;
-    if (interact && this.isNearPrincess()) {
-      this.dialogue.start(castleDialogue);
+    if (this.state === 'reveal') return;
+
+    if (this.state === 'battle' && this.battle.active) {
+      this.mobile.setEnabled(true);
+      const btn = this.mobile.consumeButtons();
+      const fire = Phaser.Input.Keyboard.JustDown(this.spaceKey) || btn.attack || btn.skill1;
+
+      this.battle.update(
+        {
+          left: this.wasd.left.isDown || this.mobile.getMovement().left,
+          right: this.wasd.right.isDown || this.mobile.getMovement().right,
+          up: this.wasd.up.isDown || this.mobile.getMovement().up,
+          down: this.wasd.down.isDown || this.mobile.getMovement().down,
+        },
+        this.time.now,
+        fire,
+      );
     }
   }
 
-  isNearPrincess() {
-    if (!this.princess.visible) return false;
-    const dx = this.warrior.x - this.princess.x;
-    const dy = this.warrior.y - this.princess.y;
-    return Math.hypot(dx, dy) < INTERACT.RANGE * 1.2;
+  clampWarriorExplore() {
+    const x = Phaser.Math.Clamp(this.warrior.x, GAME.WIDTH * 0.05, GAME.WIDTH * 0.95);
+    const y = Phaser.Math.Clamp(this.warrior.y, GAME.HEIGHT * 0.4, GAME.HEIGHT * 0.75);
+    this.warrior.sprite.setPosition(x, y);
   }
 }

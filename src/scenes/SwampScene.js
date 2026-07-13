@@ -74,6 +74,7 @@ export class SwampScene extends Phaser.Scene {
     this.cameras.main.fadeIn(TRANSITION.FADE_DURATION, 0, 0, 0);
 
     registerTestHandler('pickDialogueChoice', (index) => this.dialogue.pickChoice(index));
+    registerTestHandler('advanceDialogue', () => this.dialogue.advance());
     registerTestHandler('moveWarrior', (x, y) => {
       this.warrior.sprite.setPosition(x, y);
       this.warrior.sprite.body.setVelocity(0, 0);

@@ -13,6 +13,7 @@ class GameState {
     this.flags = {};
     this.dragonDefeated = false;
     this.warriorDefeated = false;
+    this.warriorEscaped = false;
     this.storyComplete = false;
     this.dialogueActive = false;
     this.qteActive = false;

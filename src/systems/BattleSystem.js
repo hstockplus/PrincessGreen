@@ -1,7 +1,5 @@
 import Phaser from 'phaser';
 import { GAME, UI, BATTLE, PX } from '../core/Constants.js';
-import { gameState } from '../core/GameState.js';
-import { QTESystem } from './QTESystem.js';
 import { BattleHpBar } from '../ui/BattleHpBar.js';
 
 export class BattleSystem {
@@ -16,7 +14,8 @@ export class BattleSystem {
     this.dragonHp = BATTLE.DRAGON_HP;
     this.active = false;
     this.stunnedUntil = 0;
-    this.pendingQte = false;
+    this.lasers = [];
+    this.lastDt = 0;
 
     this.warriorStart = { x: warrior.x, y: warrior.y };
     this.dragonStart = { x: dragon.x, y: dragon.y };
@@ -24,15 +23,7 @@ export class BattleSystem {
     this.warriorBar = new BattleHpBar(scene, GAME.WIDTH * 0.12, GAME.HEIGHT * 0.1, '勇士', 0xc0392b);
     this.dragonBar = new BattleHpBar(scene, GAME.WIDTH * 0.88, GAME.HEIGHT * 0.1, '恶龙', 0x8e44ad, true);
 
-    this.warning = scene.add.text(GAME.WIDTH / 2, GAME.HEIGHT * 0.22, '', {
-      fontFamily: UI.FONT,
-      fontSize: `${Math.round(GAME.HEIGHT * UI.HEADING_RATIO)}px`,
-      color: '#ff4444',
-      stroke: '#000000',
-      strokeThickness: 4,
-    }).setOrigin(0.5).setDepth(850).setVisible(false);
-
-    this.hint = scene.add.text(GAME.WIDTH / 2, GAME.HEIGHT * 0.16, '闪避恶龙冲刺，在它虚弱时按空格反击', {
+    this.hint = scene.add.text(GAME.WIDTH / 2, GAME.HEIGHT * 0.16, 'WASD 移动 · 空格/普攻发射激光 · 躲开对方光束 · 先被击中 3 次者败', {
       fontFamily: UI.FONT,
       fontSize: `${Math.round(GAME.HEIGHT * UI.SMALL_RATIO)}px`,
       color: '#d8c8e8',
@@ -40,11 +31,6 @@ export class BattleSystem {
 
     this.arenaGfx = scene.add.graphics().setDepth(5);
     this.drawArena();
-
-    this.qte = new QTESystem(scene, {
-      onComplete: () => this.onQteSuccess(),
-      onFail: () => this.onQteFail(),
-    });
 
     this.updateBars();
   }
@@ -57,7 +43,7 @@ export class BattleSystem {
       GAME.WIDTH * a.X_MIN,
       GAME.HEIGHT * a.Y_MIN,
       GAME.WIDTH * (a.X_MAX - a.X_MIN),
-      GAME.HEIGHT * (a.Y_MAX - a.Y_MIN)
+      GAME.HEIGHT * (a.Y_MAX - a.Y_MIN),
     );
   }
 
@@ -66,7 +52,24 @@ export class BattleSystem {
     this.warriorHp = BATTLE.WARRIOR_HP;
     this.dragonHp = BATTLE.DRAGON_HP;
     this.stunnedUntil = 0;
+    this.clearLasers();
+    this.warriorBar.container.setVisible(true);
+    this.dragonBar.container.setVisible(true);
+    this.hint.setVisible(true);
     this.updateBars();
+  }
+
+  stop() {
+    this.active = false;
+    this.clearLasers();
+    this.warriorBar.container.setVisible(false);
+    this.dragonBar.container.setVisible(false);
+    this.hint.setVisible(false);
+  }
+
+  clearLasers() {
+    this.lasers.forEach((l) => l.destroy());
+    this.lasers = [];
   }
 
   resetPositions() {
@@ -75,56 +78,47 @@ export class BattleSystem {
     this.dragon.reset(this.dragonStart.x, this.dragonStart.y);
   }
 
-  retry() {
-    this.warriorHp = BATTLE.WARRIOR_HP;
-    this.dragonHp = BATTLE.DRAGON_HP;
-    this.stunnedUntil = 0;
-    this.pendingQte = false;
-    this.qte.container.setVisible(false);
-    this.resetPositions();
-    this.updateBars();
-    this.active = true;
-    this.hint.setVisible(true);
-    this.warning.setVisible(false);
-  }
-
   updateBars() {
     this.warriorBar.setHp(this.warriorHp, BATTLE.WARRIOR_HP);
     this.dragonBar.setHp(this.dragonHp, BATTLE.DRAGON_HP);
   }
 
-  update(keys, now) {
+  update(keys, now, firePressed) {
     if (!this.active) return;
 
-    this.qte.update();
+    const dt = this.lastDt || 16;
+    this.lastDt = dt;
 
     if (this.stunnedUntil > now) {
       this.warrior.sprite.body.setVelocity(0, 0);
-      return;
-    }
-
-    if (this.dragon.isWindup()) {
-      this.warning.setText('快躲开！');
-      this.warning.setVisible(true);
     } else {
-      this.warning.setVisible(false);
-    }
-
-    if (!gameState.qteActive) {
       this.warrior.update(keys);
       this.clampWarrior();
+      if (firePressed) {
+        const laser = this.warrior.fireLaser(now);
+        if (laser) this.lasers.push(laser);
+      }
     }
 
-    this.dragon.update(this.warrior.x, this.warrior.y, now);
+    const dragonLaser = this.dragon.update(this.warrior.x, this.warrior.y, now);
+    if (dragonLaser) this.lasers.push(dragonLaser);
 
-    if (this.dragon.checkLungeHit(this.warrior.x, this.warrior.y)) {
-      this.damageWarrior();
-    }
+    this.lasers.forEach((laser) => {
+      laser.update(dt);
+      if (!laser.active) return;
 
-    if (this.dragon.isInRecover() && !this.pendingQte && !gameState.qteActive) {
-      this.pendingQte = true;
-      this.qte.start();
-    }
+      if (laser.owner === 'dragon' && !this.warrior.isInvulnerable(now)) {
+        if (laser.checkHit(this.warrior.x, this.warrior.y)) {
+          this.damageWarrior(now);
+        }
+      } else if (laser.owner === 'warrior' && !this.dragon.isInvulnerable(now)) {
+        if (laser.checkHit(this.dragon.x, this.dragon.y)) {
+          this.damageDragon(now);
+        }
+      }
+    });
+
+    this.lasers = this.lasers.filter((l) => l.active);
   }
 
   clampWarrior() {
@@ -134,44 +128,38 @@ export class BattleSystem {
     this.warrior.sprite.setPosition(x, y);
   }
 
-  damageWarrior() {
+  damageWarrior(now) {
     this.warriorHp -= 1;
+    this.warrior.onHit(now);
     this.updateBars();
-    this.stunnedUntil = this.scene.time.now + BATTLE.STUN_MS;
+    this.stunnedUntil = now + BATTLE.STUN_MS;
     this.scene.cameras.main.shake(200, 0.008);
     this.scene.cameras.main.flash(120, 255, 80, 80);
 
     if (this.warriorHp <= 0) {
       this.active = false;
+      this.clearLasers();
       this.onDefeat?.();
     }
   }
 
-  onQteSuccess() {
-    this.pendingQte = false;
-    this.dragon.markQteUsed();
-    this.dragon.onHurt();
+  damageDragon(now) {
     this.dragonHp -= 1;
+    this.dragon.onHit(now);
     this.updateBars();
     this.scene.cameras.main.flash(150, 255, 220, 100);
 
     if (this.dragonHp <= 0) {
       this.active = false;
+      this.clearLasers();
       this.onVictory?.();
     }
   }
 
-  onQteFail() {
-    this.pendingQte = false;
-    this.dragon.markQteUsed();
-    this.damageWarrior();
-  }
-
   destroy() {
-    this.qte.destroy();
+    this.clearLasers();
     this.warriorBar.destroy();
     this.dragonBar.destroy();
-    this.warning.destroy();
     this.hint.destroy();
     this.arenaGfx.destroy();
   }

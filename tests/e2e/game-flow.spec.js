@@ -26,6 +26,7 @@ async function getGameSize(page) {
 
 test.describe('青蛙公主 — 核心流程', () => {
   test('完整故事流程：菜单 → 王宫 → 沼泽 → 城堡 → 公主 → 结局', async ({ page }) => {
+    test.setTimeout(240000);
     await waitForGame(page);
 
     let snap = await getSnapshot(page);
@@ -66,30 +67,21 @@ test.describe('青蛙公主 — 核心流程', () => {
     expect(snap.scene).toBe('CastleScene');
 
     await page.evaluate(() => window.__TEST__.forceBattleWin());
-    await page.waitForFunction(() => window.__GAME_STATE__.dragonDefeated, null, { timeout: 10000 });
-
-    await page.evaluate(({ w, h }) => {
-      window.__TEST__.moveWarrior(w * 0.78, h * 0.58);
-    }, size);
-    await page.keyboard.press('e');
-    await page.waitForFunction(() => window.__GAME_STATE__.dialogueActive, null, { timeout: 5000 });
-    await pickDialogueChoiceAndFinish(page, 0);
-    await page.waitForFunction(() => window.__GAME__.scene.getScenes(true)[0]?.scene?.key === 'PrincessScene', null, { timeout: 20000 });
+    await page.waitForFunction(() => window.__GAME_STATE__.dialogueActive, null, { timeout: 10000 });
+    await advanceThroughDialogue(page);
+    await page.waitForFunction(() => window.__GAME__.scene.getScenes(true)[0]?.scene?.key === 'PrincessScene', null, { timeout: 25000 });
     snap = await getSnapshot(page);
     expect(snap.scene).toBe('PrincessScene');
     expect(snap.chapter).toBe(2);
+    expect(snap.flags.kissedPrincess).toBe(true);
 
     await page.waitForTimeout(2500);
 
-    const size2 = await getGameSize(page);
-    await page.evaluate(({ w, h }) => {
-      window.__TEST__.moveWarrior(w * 0.68, h * 0.68);
-    }, size2);
-    await page.keyboard.press('j');
+    await page.evaluate(() => window.__TEST__.forceEscape());
     await page.waitForFunction(() => window.__GAME_STATE__.storyComplete, null, { timeout: 10000 });
     snap = await getSnapshot(page);
     expect(snap.storyComplete).toBe(true);
-    expect(snap.warriorDefeated).toBe(true);
+    expect(snap.warriorEscaped).toBe(true);
   });
 
   test('菜单显示中文标题', async ({ page }) => {

@@ -269,6 +269,11 @@ export class DialogueManager {
       this.scene.onDialogueTrigger?.('departSwamp');
       return;
     }
+    if (node.trigger) {
+      this.close();
+      this.scene.onDialogueTrigger?.(node.trigger);
+      return;
+    }
     if (node.end) {
       this.close();
       this.scene.onDialogueComplete?.();
