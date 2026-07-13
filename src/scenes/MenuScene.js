@@ -2,7 +2,9 @@ import Phaser from 'phaser';
 import { GAME, UI, TRANSITION } from '../core/Constants.js';
 import { gameState } from '../core/GameState.js';
 import { eventBus, Events } from '../core/EventBus.js';
+import { enterGameMode } from '../core/FullscreenManager.js';
 import { showSceneBackground, BG_KEYS } from '../art/BackgroundArt.js';
+import { unlockAudio } from '../systems/SimpleSFX.js';
 
 const ML = {
   titleGold: '#ffd878',
@@ -58,7 +60,7 @@ export class MenuScene extends Phaser.Scene {
     this.add.rectangle(GAME.WIDTH / 2, btnY, btnW + 8, btnH + 8, 0x000000, 0)
       .setStrokeStyle(2, ML.btnStroke, 0.4).setDepth(9);
 
-    const startBtn = this.add.text(GAME.WIDTH / 2, btnY, '按 Enter 开始游戏', {
+    const startBtn = this.add.text(GAME.WIDTH / 2, btnY, '点击开始游戏', {
       fontFamily: UI.FONT,
       fontSize: `${Math.round(GAME.HEIGHT * UI.BODY_RATIO)}px`,
       color: ML.btnText,
@@ -66,8 +68,30 @@ export class MenuScene extends Phaser.Scene {
       strokeThickness: 2,
     }).setOrigin(0.5).setDepth(11);
 
+    this.entryHint = this.add.text(GAME.WIDTH / 2, GAME.HEIGHT * 0.78, '进入即播放音乐 · 横屏自动全屏', {
+      fontFamily: UI.FONT,
+      fontSize: `${Math.round(GAME.HEIGHT * UI.SMALL_RATIO)}px`,
+      color: '#f5dca0',
+      stroke: '#301010',
+      strokeThickness: 2,
+    }).setOrigin(0.5).setDepth(12);
+
+    this.tweens.add({
+      targets: this.entryHint,
+      alpha: { from: 1, to: 0.35 },
+      duration: 900,
+      yoyo: true,
+      repeat: -1,
+    });
+
+    const activate = () => {
+      enterGameMode();
+      unlockAudio();
+    };
+
     const start = () => {
       if (gameState.started) return;
+      activate();
       gameState.started = true;
       gameState.phase = 'palace';
       eventBus.emit(Events.GAME_START);
@@ -77,9 +101,18 @@ export class MenuScene extends Phaser.Scene {
       });
     };
 
+    this.input.on('pointerdown', activate);
     btnBg.on('pointerdown', start);
     startBtn.setInteractive({ useHandCursor: true }).on('pointerdown', start);
     this.input.keyboard.once('keydown-ENTER', start);
     this.cameras.main.fadeIn(TRANSITION.FADE_DURATION, 0, 0, 0);
+
+    try {
+      if (sessionStorage.getItem('pg_user_gesture') === '1') {
+        activate();
+      }
+    } catch {
+      /* ignore */
+    }
   }
 }

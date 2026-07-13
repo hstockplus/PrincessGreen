@@ -8,6 +8,7 @@ import { registerTestHandler } from '../testing/TestAPI.js';
 import { showSceneBackground, BG_KEYS } from '../art/BackgroundArt.js';
 import { createDecorSprite, ySort, TEXTURE_KEYS } from '../art/AssetRegistry.js';
 import { createMobileControls } from '../ui/MobileControls.js';
+import { startAmbientMusic } from '../systems/SimpleSFX.js';
 
 const EXIT_X = GAME.WIDTH * 0.92;
 const CHASE_SPEED = WARRIOR.SPEED * 0.85;
@@ -80,6 +81,7 @@ export class PrincessScene extends Phaser.Scene {
     registerTestHandler('forceEscape', () => {
       this.onEscapeSuccess();
     });
+    startAmbientMusic();
   }
 
   update() {

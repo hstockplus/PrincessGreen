@@ -48,11 +48,13 @@ export class Dragon {
       this.sprite.setFlipX(this.patrolDir < 0);
     }
 
+    let laser = null;
     if (now - this.lastFireAt >= BATTLE.DRAGON_FIRE_COOLDOWN_MS) {
-      this.fireLaser(warriorX, warriorY, now);
+      laser = this.fireLaser(warriorX, warriorY, now);
     }
 
     ySort(this.sprite, 28);
+    return laser;
   }
 
   fireLaser(targetX, targetY, now) {
