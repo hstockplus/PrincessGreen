@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME, UI, BATTLE, PX } from '../core/Constants.js';
 import { BattleHpBar } from '../ui/BattleHpBar.js';
+import { startBattleMusic, stopBattleMusic } from './SimpleSFX.js';
 
 export class BattleSystem {
   constructor(scene, { warrior, dragon, onVictory, onDefeat }) {
@@ -57,6 +58,7 @@ export class BattleSystem {
     this.dragonBar.container.setVisible(true);
     this.hint.setVisible(true);
     this.updateBars();
+    startBattleMusic();
   }
 
   stop() {
@@ -65,6 +67,7 @@ export class BattleSystem {
     this.warriorBar.container.setVisible(false);
     this.dragonBar.container.setVisible(false);
     this.hint.setVisible(false);
+    stopBattleMusic();
   }
 
   clearLasers() {
@@ -83,10 +86,9 @@ export class BattleSystem {
     this.dragonBar.setHp(this.dragonHp, BATTLE.DRAGON_HP);
   }
 
-  update(keys, now, firePressed) {
+  update(keys, now, firePressed, dt = 16) {
     if (!this.active) return;
 
-    const dt = this.lastDt || 16;
     this.lastDt = dt;
 
     if (this.stunnedUntil > now) {
@@ -157,6 +159,7 @@ export class BattleSystem {
   }
 
   destroy() {
+    stopBattleMusic();
     this.clearLasers();
     this.warriorBar.destroy();
     this.dragonBar.destroy();

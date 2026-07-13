@@ -2,7 +2,10 @@ import Phaser from 'phaser';
 import { GameConfig } from './core/GameConfig.js';
 import { eventBus, Events } from './core/EventBus.js';
 import { gameState } from './core/GameState.js';
+import { initOrientationFullscreen } from './core/FullscreenManager.js';
 import { getGameSnapshot, getTestHandlers, getDialogueChoiceY } from './testing/TestAPI.js';
+
+initOrientationFullscreen();
 
 const game = new Phaser.Game(GameConfig);
 

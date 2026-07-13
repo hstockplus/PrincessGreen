@@ -323,6 +323,7 @@ export class CastleScene extends Phaser.Scene {
         },
         this.time.now,
         fire,
+        this.game.loop.delta,
       );
     }
   }

@@ -34,7 +34,7 @@ export class Warrior {
     if (keys.up) vy = -speed;
     if (keys.down) vy = speed;
     this.sprite.body.setVelocity(vx, vy);
-    this.sprite.setFlipX(!this.facingRight);
+    this.sprite.setFlipX(this.facingRight);
 
     const moving = vx !== 0 || vy !== 0;
     setSheetFrame(this.sprite, moving ? 1 : 0);
