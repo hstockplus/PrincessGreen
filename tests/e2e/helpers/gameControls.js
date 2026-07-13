@@ -95,7 +95,7 @@ export async function keyboardHoldDirection(page, key, untilFn, maxMs = 90000) {
 export async function keyboardQTEHit(page) {
   await focusCanvas(page);
   await page.waitForFunction(() => {
-    const qte = window.__GAME__.scene.getScene('CastleScene')?.qte;
+    const qte = window.__GAME__.scene.getScene('CastleScene')?.battle?.qte;
     if (!qte?.active) return false;
     const targetR = qte.target?.radius ?? 18;
     return Math.abs(qte.ringRadius - targetR) <= targetR;
@@ -105,23 +105,35 @@ export async function keyboardQTEHit(page) {
 
 export async function keyboardCompleteQTE(page) {
   await focusCanvas(page);
-  await page.waitForFunction(() => window.__GAME__.scene.getScene('CastleScene')?.qte?.active, null, { timeout: 8000 });
-  const center = await page.evaluate(() => ({
-    x: window.__GAME__.config.width / 2,
-    y: window.__GAME__.config.height * 0.42,
-  }));
-
-  for (let round = 0; round < 2; round++) {
+  const start = Date.now();
+  while (Date.now() - start < 90000) {
     if (await page.evaluate(() => window.__GAME_STATE__.dragonDefeated)) return;
-    await page.waitForTimeout(500);
-    await clickGamePoint(page, center.x, center.y);
-    await page.evaluate(() => {
-      const qte = window.__GAME__.scene.getScene('CastleScene')?.qte;
-      if (qte?.active) qte.tryHit();
-    });
-    await page.waitForTimeout(400);
+
+    const qteActive = await page.evaluate(() => window.__GAME__.scene.getScene('CastleScene')?.battle?.qte?.active);
+    if (qteActive) {
+      await page.evaluate(() => {
+        const qte = window.__GAME__.scene.getScene('CastleScene')?.battle?.qte;
+        if (!qte?.active) return;
+        qte.tryHit();
+        qte.tryHit();
+      });
+      await page.waitForTimeout(500);
+      continue;
+    }
+    await page.waitForTimeout(200);
   }
-  await page.waitForFunction(() => window.__GAME_STATE__.dragonDefeated, null, { timeout: 8000 });
+  await page.waitForFunction(() => window.__GAME_STATE__.dragonDefeated, null, { timeout: 10000 });
+}
+
+export async function advanceThroughDialogue(page) {
+  await focusCanvas(page);
+  for (let i = 0; i < 30; i++) {
+    const active = await page.evaluate(() => window.__GAME_STATE__.dialogueActive);
+    if (!active) return;
+    await page.evaluate(() => window.__TEST__.advanceDialogue?.());
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(120);
+  }
 }
 
 export async function pressInteract(page) {
@@ -138,6 +150,11 @@ export async function clickNpcInteract(page, xRatio, yRatio) {
 export async function clickDialogueChoice(page, index) {
   await focusCanvas(page);
   await page.locator('canvas').press(String(index + 1), { delay: 120 });
+}
+
+export async function pickDialogueChoiceAndFinish(page, index = 0) {
+  await clickDialogueChoice(page, index);
+  await advanceThroughDialogue(page);
 }
 
 export async function waitForScene(page, sceneKey, timeoutMs = 30000) {

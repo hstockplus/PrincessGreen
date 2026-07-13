@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME, COLORS, DPR } from './Constants.js';
 import { BootScene } from '../scenes/BootScene.js';
 import { MenuScene } from '../scenes/MenuScene.js';
+import { PalaceScene } from '../scenes/PalaceScene.js';
 import { SwampScene } from '../scenes/SwampScene.js';
 import { CastleScene } from '../scenes/CastleScene.js';
 import { PrincessScene } from '../scenes/PrincessScene.js';
@@ -29,5 +30,5 @@ export const GameConfig = {
       debug: false,
     },
   },
-  scene: [BootScene, MenuScene, SwampScene, CastleScene, PrincessScene],
+  scene: [BootScene, MenuScene, PalaceScene, SwampScene, CastleScene, PrincessScene],
 };

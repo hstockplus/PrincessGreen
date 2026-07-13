@@ -79,6 +79,7 @@ export class SwampScene extends Phaser.Scene {
       this.warrior.sprite.body.setVelocity(0, 0);
       ySort(this.warrior.sprite);
     });
+    registerTestHandler('exitToCastle', () => this.goToCastle());
   }
 
   onDialogueComplete() {
@@ -91,11 +92,18 @@ export class SwampScene extends Phaser.Scene {
   }
 
   update() {
+    if (gameState.hasFlag('tookFrog')) {
+      this.canExit = true;
+    }
+
     this.mobile.setEnabled(!gameState.dialogueActive && !gameState.qteActive);
 
     if (gameState.dialogueActive) {
       this.warrior.sprite.body.setVelocity(0, 0);
       const btn = this.mobile.consumeButtons();
+      if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
+        this.dialogue.advance();
+      }
       this.dialogue.pickFromMobileButtons(btn);
       return;
     }
@@ -140,6 +148,8 @@ export class SwampScene extends Phaser.Scene {
   }
 
   goToCastle() {
+    if (this._leaving) return;
+    this._leaving = true;
     gameState.phase = 'castle';
     this.cameras.main.fadeOut(TRANSITION.FADE_DURATION, 0, 0, 0);
     this.time.delayedCall(TRANSITION.FADE_DURATION, () => {

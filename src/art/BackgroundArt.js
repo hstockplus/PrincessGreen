@@ -3,6 +3,7 @@ import { TEXTURE_KEYS, SHEET_KEYS, SHEET_FRAMES, UI_KEYS } from '../sprites/char
 
 export const BG_KEYS = {
   MENU: 'bg_menu',
+  PALACE: 'bg_castle',
   SWAMP: 'bg_swamp',
   CASTLE: 'bg_castle',
   PRINCESS_PATH: 'bg_princess_path',

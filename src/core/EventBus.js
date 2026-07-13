@@ -13,6 +13,7 @@ export const Events = {
   KISS_REVEAL: 'story:kissReveal',
   WARRIOR_DEFEATED: 'warrior:defeated',
   STORY_COMPLETE: 'story:complete',
+  BOUNTY_ACCEPTED: 'story:bountyAccepted',
 };
 
 class EventBus {

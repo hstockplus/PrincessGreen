@@ -1,10 +1,12 @@
 import Phaser from 'phaser';
-import { GAME, UI, INTERACT, PRINCESS, DRAGON, TRANSITION, FROG } from '../core/Constants.js';
+import { GAME, UI, INTERACT, PRINCESS, TRANSITION, FROG } from '../core/Constants.js';
 import { gameState } from '../core/GameState.js';
 import { eventBus, Events } from '../core/EventBus.js';
 import { Warrior } from '../entities/Warrior.js';
+import { Dragon } from '../entities/Dragon.js';
 import { DialogueManager } from '../systems/DialogueManager.js';
-import { QTESystem } from '../systems/QTESystem.js';
+import { BattleSystem } from '../systems/BattleSystem.js';
+import { DefeatOverlay } from '../ui/DefeatOverlay.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
 import { showSceneBackground, BG_KEYS } from '../art/BackgroundArt.js';
 import { createDecorSprite, TEXTURE_KEYS, SHEET_KEYS } from '../art/AssetRegistry.js';
@@ -31,9 +33,12 @@ export class CastleScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(50);
 
     this.warrior = new Warrior(this, GAME.WIDTH * 0.12, GAME.HEIGHT * 0.62);
+    this.dragonEntity = new Dragon(this, GAME.WIDTH * 0.5, GAME.HEIGHT * 0.48);
 
-    this.dragon = createDecorSprite(this, GAME.WIDTH * 0.5, GAME.HEIGHT * 0.48, TEXTURE_KEYS.DRAGON, DRAGON.HEIGHT, 28, 0, SHEET_KEYS.DRAGON);
-    this.princess = createDecorSprite(this, GAME.WIDTH * 0.78, GAME.HEIGHT * 0.58, TEXTURE_KEYS.PRINCESS, PRINCESS.HEIGHT, 28, 0, SHEET_KEYS.PRINCESS);
+    this.princess = createDecorSprite(
+      this, GAME.WIDTH * 0.78, GAME.HEIGHT * 0.58,
+      TEXTURE_KEYS.PRINCESS, PRINCESS.HEIGHT, 28, 0, SHEET_KEYS.PRINCESS
+    );
     this.princess.setVisible(false);
     this.princess.setInteractive({ useHandCursor: true });
     this.princess.on('pointerdown', () => {
@@ -43,12 +48,19 @@ export class CastleScene extends Phaser.Scene {
     });
 
     this.dialogue = new DialogueManager(this);
-    this.qte = new QTESystem(this, {
-      onComplete: () => this.onDragonDefeated(),
-      onFail: () => this.qte.start(),
+
+    this.defeatOverlay = new DefeatOverlay(this, {
+      onRetry: () => this.battle?.retry(),
     });
 
-    this.state = gameState.dragonDefeated ? 'explore' : 'qte';
+    this.battle = new BattleSystem(this, {
+      warrior: this.warrior,
+      dragon: this.dragonEntity,
+      onVictory: () => this.onDragonDefeated(),
+      onDefeat: () => this.defeatOverlay.show(),
+    });
+
+    this.state = gameState.dragonDefeated ? 'explore' : 'battle';
     this.hint = this.add.text(GAME.WIDTH / 2, GAME.HEIGHT * 0.93, '', {
       fontFamily: UI.FONT,
       fontSize: `${Math.round(GAME.HEIGHT * UI.SMALL_RATIO)}px`,
@@ -71,18 +83,30 @@ export class CastleScene extends Phaser.Scene {
     });
 
     if (!gameState.dragonDefeated) {
-      this.hint.setText('恶龙在前！普攻键在绿色区域出手');
+      this.hint.setText('WASD 闪避 · 恶龙虚弱时按空格/普攻反击');
       this.mobile.setLabels({ attack: '普攻', skills: ['斩', '谈', ''] });
-      this.qte.start();
+      this.battle.start();
+      this.dragonEntity.sprite.setVisible(true);
     } else {
       this.onDragonDefeated(false);
+      this.dragonEntity.sprite.setVisible(false);
+      this.battle.active = false;
+      this.battle.hint.setVisible(false);
+      this.battle.warriorBar.container.setVisible(false);
+      this.battle.dragonBar.container.setVisible(false);
     }
 
     this.cameras.main.fadeIn(TRANSITION.FADE_DURATION, 0, 0, 0);
 
     registerTestHandler('pickDialogueChoice', (index) => this.dialogue.pickChoice(index));
     registerTestHandler('forceQTESuccess', () => {
-      if (this.qte?.active) this.qte.finish(true);
+      if (this.battle?.qte?.active) this.battle.qte.finish(true);
+    });
+    registerTestHandler('forceBattleWin', () => {
+      if (this.state !== 'battle' || !this.battle) return;
+      this.battle.dragonHp = 0;
+      this.battle.active = false;
+      this.onDragonDefeated();
     });
     registerTestHandler('moveWarrior', (x, y) => {
       this.warrior.sprite.setPosition(x, y);
@@ -93,11 +117,16 @@ export class CastleScene extends Phaser.Scene {
   onDragonDefeated(animate = true) {
     gameState.dragonDefeated = true;
     eventBus.emit(Events.DRAGON_DEFEATED);
-    this.dragon.setVisible(false);
+    this.dragonEntity.sprite.setVisible(false);
+    this.battle.active = false;
+    this.battle.hint.setVisible(false);
+    this.battle.warriorBar.container.setVisible(false);
+    this.battle.dragonBar.container.setVisible(false);
+    this.battle.warning.setVisible(false);
     this.princess.setVisible(true);
     this.state = 'explore';
     this.hint.setText('靠近公主，交互键对话');
-    this.mobile?.setLabels({ attack: '交互', skills: ['谈', '行', ''] });
+    this.mobile.setLabels({ attack: '交互', skills: ['谈', '行', ''] });
     if (animate) this.cameras.main.flash(200, 255, 220, 180);
   }
 
@@ -124,27 +153,47 @@ export class CastleScene extends Phaser.Scene {
 
   update() {
     const inQte = gameState.qteActive;
-    this.mobile.setEnabled(!gameState.dialogueActive && !inQte);
+
+    if (this.state === 'battle' && this.battle.active) {
+      this.mobile.setEnabled(!gameState.dialogueActive && !inQte);
+
+      if (gameState.dialogueActive) {
+        this.warrior.sprite.body.setVelocity(0, 0);
+        const btn = this.mobile.consumeButtons();
+        if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
+          this.dialogue.advance();
+        }
+        this.dialogue.pickFromMobileButtons(btn);
+        return;
+      }
+
+      const btn = this.mobile.consumeButtons();
+      if (inQte && (btn.attack || btn.skill1 || Phaser.Input.Keyboard.JustDown(this.spaceKey))) {
+        this.battle.qte.tryHit();
+      }
+
+      const move = this.mobile.getMovement();
+      this.battle.update(
+        {
+          left: this.wasd.left.isDown || move.left,
+          right: this.wasd.right.isDown || move.right,
+          up: this.wasd.up.isDown || move.up,
+          down: this.wasd.down.isDown || move.down,
+        },
+        this.time.now
+      );
+      return;
+    }
+
+    this.mobile.setEnabled(!gameState.dialogueActive);
 
     if (gameState.dialogueActive) {
       this.warrior.sprite.body.setVelocity(0, 0);
       const btn = this.mobile.consumeButtons();
+      if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
+        this.dialogue.advance();
+      }
       this.dialogue.pickFromMobileButtons(btn);
-      return;
-    }
-
-    const btn = this.mobile.consumeButtons();
-    if (inQte && btn.attack) {
-      this.qte.tryHit();
-    }
-    if (inQte && (Phaser.Input.Keyboard.JustDown(this.spaceKey) || btn.skill1)) {
-      this.qte.tryHit();
-    }
-
-    this.qte.update();
-
-    if (inQte && this.state !== 'explore') {
-      this.warrior.sprite.body.setVelocity(0, 0);
       return;
     }
 
@@ -158,6 +207,7 @@ export class CastleScene extends Phaser.Scene {
       down: this.wasd.down.isDown || move.down,
     });
 
+    const btn = this.mobile.consumeButtons();
     const interact = Phaser.Input.Keyboard.JustDown(this.interactKey) || btn.attack || btn.skill1;
     if (interact && this.isNearPrincess()) {
       this.dialogue.start(castleDialogue);

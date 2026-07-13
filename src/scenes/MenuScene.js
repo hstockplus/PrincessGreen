@@ -69,11 +69,11 @@ export class MenuScene extends Phaser.Scene {
     const start = () => {
       if (gameState.started) return;
       gameState.started = true;
-      gameState.phase = 'swamp';
+      gameState.phase = 'palace';
       eventBus.emit(Events.GAME_START);
       this.cameras.main.fadeOut(TRANSITION.FADE_DURATION, 0, 0, 0);
       this.time.delayedCall(TRANSITION.FADE_DURATION, () => {
-        this.scene.start('SwampScene');
+        this.scene.start('PalaceScene');
       });
     };
 

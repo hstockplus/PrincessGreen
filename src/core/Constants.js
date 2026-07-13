@@ -106,6 +106,30 @@ export const DRAGON = {
   WIDTH: GAME.WIDTH * 0.2,
   HEIGHT: GAME.HEIGHT * 0.14,
   COLOR: 0x8e44ad,
+  SPEED: 220 * PX,
+  LUNGE_SPEED: 480 * PX,
+};
+
+export const KING = {
+  WIDTH: GAME.WIDTH * 0.1,
+  HEIGHT: GAME.HEIGHT * 0.34,
+};
+
+export const BATTLE = {
+  WARRIOR_HP: 3,
+  DRAGON_HP: 3,
+  ARENA: {
+    X_MIN: 0.08,
+    X_MAX: 0.92,
+    Y_MIN: 0.38,
+    Y_MAX: 0.72,
+  },
+  PATROL_MS: 2200,
+  WINDUP_MS: 900,
+  LUNGE_MS: 450,
+  RECOVER_MS: 1800,
+  HIT_RANGE: GAME.WIDTH * 0.1,
+  STUN_MS: 600,
 };
 
 export const SCENE_COLORS = {

@@ -34,8 +34,11 @@ window.render_game_to_text = () => JSON.stringify(getGameSnapshot(game));
 
 window.__TEST__ = {
   getSnapshot: () => getGameSnapshot(game),
+  advanceDialogue: () => getTestHandlers().advanceDialogue?.(),
   pickDialogueChoice: (index) => getTestHandlers().pickDialogueChoice?.(index),
   forceQTESuccess: () => getTestHandlers().forceQTESuccess?.(),
+  forceBattleWin: () => getTestHandlers().forceBattleWin?.(),
+  exitToCastle: () => getTestHandlers().exitToCastle?.(),
   moveWarrior: (x, y) => getTestHandlers().moveWarrior?.(x, y),
   getDialogueChoiceY: (index) => getDialogueChoiceY(game, index),
   waitForPhase: (phase, timeoutMs = 10000) =>

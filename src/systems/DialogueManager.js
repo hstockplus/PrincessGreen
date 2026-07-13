@@ -1,6 +1,7 @@
 import { GAME, UI, COLORS, PX } from '../core/Constants.js';
 import { eventBus, Events } from '../core/EventBus.js';
 import { gameState } from '../core/GameState.js';
+import { registerTestHandler } from '../testing/TestAPI.js';
 
 const PANEL_PAD = 20 * PX;
 const LINE_GAP = 10 * PX;
@@ -15,6 +16,9 @@ export class DialogueManager {
     this.currentNodeId = null;
     this.choiceItems = [];
     this.blockInput = false;
+    this.awaitingContinue = false;
+    this.pendingNext = null;
+    this.pendingFinishNode = null;
 
     this.panelTop = GAME.HEIGHT * 0.68;
     this.basePanelH = GAME.HEIGHT * 0.3;
@@ -60,6 +64,8 @@ export class DialogueManager {
     scene.input.keyboard.on('keydown-ONE', () => this.pickChoice(0));
     scene.input.keyboard.on('keydown-TWO', () => this.pickChoice(1));
     scene.input.keyboard.on('keydown-THREE', () => this.pickChoice(2));
+    scene.input.keyboard.on('keydown-SPACE', () => this.advance());
+    scene.input.keyboard.on('keydown-ENTER', () => this.advance());
   }
 
   layoutPanel(height) {
@@ -77,6 +83,7 @@ export class DialogueManager {
     eventBus.emit(Events.DIALOGUE_START);
     this.container.setVisible(true);
     this.scene.mobile?.setDialogueMode?.(true);
+    registerTestHandler('advanceDialogue', () => this.advance());
     this.showNode(this.currentNodeId);
   }
 
@@ -146,14 +153,73 @@ export class DialogueManager {
     const panelH = Math.max(this.basePanelH, contentH);
     this.layoutPanel(panelH);
 
-    if (node.choices?.length) return;
-
-    if (node.next) {
-      this.scene.time.delayedCall(400, () => this.showNode(node.next));
+    if (node.choices?.length) {
+      this.awaitingContinue = false;
       return;
     }
 
-    this.finishNode(node);
+    this.awaitingContinue = true;
+    this.pendingNext = node.next || null;
+    this.pendingFinishNode = node;
+    this.showContinueButton(y);
+  }
+
+  showContinueButton(y) {
+    const rowW = GAME.WIDTH * 0.88;
+    const rowH = CHOICE_MIN_H;
+    const rowCenterY = y + rowH / 2;
+    const label = '点击继续 ▶';
+
+    const hit = this.scene.add.rectangle(
+      GAME.WIDTH / 2,
+      rowCenterY,
+      rowW,
+      rowH,
+      0x3a2818,
+      0.92,
+    )
+      .setStrokeStyle(2 * PX, 0xc9a227)
+      .setDepth(DIALOGUE_DEPTH + 1)
+      .setInteractive({ useHandCursor: true });
+
+    const text = this.scene.add.text(GAME.WIDTH / 2, rowCenterY, label, {
+      fontFamily: UI.FONT,
+      fontSize: `${Math.round(GAME.HEIGHT * UI.SMALL_RATIO)}px`,
+      color: '#ffd878',
+    }).setOrigin(0.5).setDepth(DIALOGUE_DEPTH + 2);
+
+    const pick = () => this.advance();
+    hit.on('pointerover', () => {
+      hit.setFillStyle(0x5a3828, 0.95);
+      text.setColor('#fff8e0');
+    });
+    hit.on('pointerout', () => {
+      hit.setFillStyle(0x3a2818, 0.92);
+      text.setColor('#ffd878');
+    });
+    hit.on('pointerdown', pick);
+    text.setInteractive({ useHandCursor: true });
+    text.on('pointerdown', pick);
+
+    this.choiceItems.push(hit, text);
+
+    const contentH = y + rowH + PANEL_PAD - this.panelTop + PANEL_PAD;
+    const panelH = Math.max(this.basePanelH, contentH);
+    this.layoutPanel(panelH);
+  }
+
+  advance() {
+    if (!gameState.dialogueActive || this.blockInput || !this.awaitingContinue) return;
+
+    this.awaitingContinue = false;
+    this.clearChoices();
+
+    if (this.pendingNext) {
+      this.showNode(this.pendingNext);
+      return;
+    }
+
+    this.finishNode(this.pendingFinishNode || {});
   }
 
   pickChoice(index) {
@@ -177,8 +243,12 @@ export class DialogueManager {
     }
   }
 
-  /** 移动端：普攻/技能键映射选项 0/1/2 */
+  /** 移动端：普攻/技能键映射选项 0/1/2，或继续下一句 */
   pickFromMobileButtons({ attack, skill1, skill2, skill3 }) {
+    if (this.awaitingContinue && (attack || skill1)) {
+      this.advance();
+      return true;
+    }
     if (attack || skill1) return this.pickChoice(0);
     if (skill2) return this.pickChoice(1);
     if (skill3) return this.pickChoice(2);
@@ -192,6 +262,11 @@ export class DialogueManager {
     if (node.trigger === 'chapterTwo') {
       this.close();
       this.scene.onDialogueTrigger?.('chapterTwo');
+      return;
+    }
+    if (node.trigger === 'departSwamp') {
+      this.close();
+      this.scene.onDialogueTrigger?.('departSwamp');
       return;
     }
     if (node.end) {

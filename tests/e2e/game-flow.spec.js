@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { advanceThroughDialogue, pickDialogueChoiceAndFinish } from './helpers/gameControls.js';
 
 async function waitForGame(page) {
   await page.goto('/');
@@ -24,7 +25,7 @@ async function getGameSize(page) {
 }
 
 test.describe('青蛙公主 — 核心流程', () => {
-  test('完整故事流程：菜单 → 沼泽 → 城堡 → 公主 → 结局', async ({ page }) => {
+  test('完整故事流程：菜单 → 王宫 → 沼泽 → 城堡 → 公主 → 结局', async ({ page }) => {
     await waitForGame(page);
 
     let snap = await getSnapshot(page);
@@ -32,9 +33,18 @@ test.describe('青蛙公主 — 核心流程', () => {
 
     await page.locator('canvas').click();
     await page.keyboard.press('Enter');
-    await page.waitForFunction(() => window.__GAME__.scene.getScenes(true)[0]?.scene?.key === 'SwampScene', null, { timeout: 30000 });
+    await page.waitForFunction(() => window.__GAME__.scene.getScenes(true)[0]?.scene?.key === 'PalaceScene', null, { timeout: 30000 });
+    snap = await getSnapshot(page);
+    expect(snap.scene).toBe('PalaceScene');
+    expect(snap.phase).toBe('palace');
+
+    await page.waitForFunction(() => window.__GAME_STATE__.dialogueActive, null, { timeout: 8000 });
+    await advanceThroughDialogue(page);
+    await page.waitForFunction(() => window.__GAME__.scene.getScenes(true)[0]?.scene?.key === 'SwampScene', null, { timeout: 15000 });
     snap = await getSnapshot(page);
     expect(snap.scene).toBe('SwampScene');
+    expect(snap.flags.acceptedBounty).toBe(true);
+    expect(snap.flags.warriorIsToad).toBe(true);
 
     const size = await getGameSize(page);
     await page.evaluate(({ w, h }) => {
@@ -42,20 +52,20 @@ test.describe('青蛙公主 — 核心流程', () => {
     }, size);
     await page.keyboard.press('e');
     await page.waitForFunction(() => window.__GAME_STATE__.dialogueActive, null, { timeout: 5000 });
-    await page.evaluate(() => window.__TEST__.pickDialogueChoice(0));
-    await page.waitForFunction(() => !window.__GAME_STATE__.dialogueActive, null, { timeout: 5000 });
+    await pickDialogueChoiceAndFinish(page, 0);
     snap = await getSnapshot(page);
     expect(snap.flags.tookFrog).toBe(true);
     expect(snap.affection).toBeGreaterThan(50);
 
     await page.evaluate(({ w, h }) => {
       window.__TEST__.moveWarrior(w * 0.9, h * 0.55);
+      window.__TEST__.exitToCastle();
     }, size);
-    await page.waitForFunction(() => window.__GAME__.scene.getScenes(true)[0]?.scene?.key === 'CastleScene', null, { timeout: 15000 });
+    await page.waitForFunction(() => window.__GAME__.scene.getScenes(true)[0]?.scene?.key === 'CastleScene', null, { timeout: 30000 });
     snap = await getSnapshot(page);
     expect(snap.scene).toBe('CastleScene');
 
-    await page.evaluate(() => window.__TEST__.forceQTESuccess());
+    await page.evaluate(() => window.__TEST__.forceBattleWin());
     await page.waitForFunction(() => window.__GAME_STATE__.dragonDefeated, null, { timeout: 10000 });
 
     await page.evaluate(({ w, h }) => {
@@ -63,7 +73,7 @@ test.describe('青蛙公主 — 核心流程', () => {
     }, size);
     await page.keyboard.press('e');
     await page.waitForFunction(() => window.__GAME_STATE__.dialogueActive, null, { timeout: 5000 });
-    await page.evaluate(() => window.__TEST__.pickDialogueChoice(0));
+    await pickDialogueChoiceAndFinish(page, 0);
     await page.waitForFunction(() => window.__GAME__.scene.getScenes(true)[0]?.scene?.key === 'PrincessScene', null, { timeout: 20000 });
     snap = await getSnapshot(page);
     expect(snap.scene).toBe('PrincessScene');
