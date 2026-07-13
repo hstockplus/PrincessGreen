@@ -10,6 +10,7 @@ import { showSceneBackground, BG_KEYS } from '../art/BackgroundArt.js';
 import { createDecorSprite, ySort, TEXTURE_KEYS } from '../art/AssetRegistry.js';
 import { createMobileControls } from '../ui/MobileControls.js';
 import swampDialogue from '../../assets/dialogues/swamp.json';
+import { startAmbientMusic } from '../systems/SimpleSFX.js';
 
 export class SwampScene extends Phaser.Scene {
   constructor() {
@@ -81,6 +82,7 @@ export class SwampScene extends Phaser.Scene {
       ySort(this.warrior.sprite);
     });
     registerTestHandler('exitToCastle', () => this.goToCastle());
+    startAmbientMusic();
   }
 
   onDialogueComplete() {

@@ -1,3 +1,5 @@
+import { ensureMusicPlaying } from '../systems/SimpleSFX.js';
+
 const GESTURE_KEY = 'pg_user_gesture';
 
 function isLandscape() {
@@ -57,6 +59,7 @@ export function syncOrientationFullscreen() {
 export function initOrientationFullscreen() {
   const onGesture = () => {
     markUserGesture();
+    ensureMusicPlaying();
     syncOrientationFullscreen();
     window.removeEventListener('pointerdown', onGesture);
     window.removeEventListener('keydown', onGesture);

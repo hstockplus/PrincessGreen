@@ -9,6 +9,7 @@ import { showSceneBackground, BG_KEYS } from '../art/BackgroundArt.js';
 import { createDecorSprite, TEXTURE_KEYS } from '../art/AssetRegistry.js';
 import { createMobileControls } from '../ui/MobileControls.js';
 import palaceDialogue from '../../assets/dialogues/palace.json';
+import { startAmbientMusic } from '../systems/SimpleSFX.js';
 
 export class PalaceScene extends Phaser.Scene {
   constructor() {
@@ -61,6 +62,7 @@ export class PalaceScene extends Phaser.Scene {
     this.time.delayedCall(500, () => {
       if (!this.dialogueStarted) this.startDialogue();
     });
+    startAmbientMusic();
   }
 
   startDialogue() {

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { GAME, UI, BATTLE, PX } from '../core/Constants.js';
 import { BattleHpBar } from '../ui/BattleHpBar.js';
-import { startBattleMusic, stopBattleMusic } from './SimpleSFX.js';
+import { startBattleMusic, stopBattleMusic, stopAllMusic } from './SimpleSFX.js';
 
 export class BattleSystem {
   constructor(scene, { warrior, dragon, onVictory, onDefeat }) {
@@ -159,7 +159,7 @@ export class BattleSystem {
   }
 
   destroy() {
-    stopBattleMusic();
+    stopAllMusic();
     this.clearLasers();
     this.warriorBar.destroy();
     this.dragonBar.destroy();

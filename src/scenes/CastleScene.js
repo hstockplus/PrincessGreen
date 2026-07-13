@@ -6,7 +6,7 @@ import { Warrior } from '../entities/Warrior.js';
 import { Dragon } from '../entities/Dragon.js';
 import { DialogueManager } from '../systems/DialogueManager.js';
 import { BattleSystem } from '../systems/BattleSystem.js';
-import { playHelpCry } from '../systems/SimpleSFX.js';
+import { playHelpCry, startAmbientMusic } from '../systems/SimpleSFX.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
 import { showSceneBackground, BG_KEYS } from '../art/BackgroundArt.js';
 import { createDecorSprite, TEXTURE_KEYS, SHEET_KEYS } from '../art/AssetRegistry.js';
@@ -103,6 +103,7 @@ export class CastleScene extends Phaser.Scene {
     }
 
     this.cameras.main.fadeIn(TRANSITION.FADE_DURATION, 0, 0, 0);
+    startAmbientMusic();
 
     registerTestHandler('pickDialogueChoice', (index) => this.dialogue.pickChoice(index));
     registerTestHandler('advanceDialogue', () => this.dialogue.advance());

@@ -3,6 +3,7 @@ import { GAME, UI, TRANSITION } from '../core/Constants.js';
 import { gameState } from '../core/GameState.js';
 import { eventBus, Events } from '../core/EventBus.js';
 import { showSceneBackground, BG_KEYS } from '../art/BackgroundArt.js';
+import { startAmbientMusic } from '../systems/SimpleSFX.js';
 
 const ML = {
   titleGold: '#ffd878',
@@ -81,5 +82,6 @@ export class MenuScene extends Phaser.Scene {
     startBtn.setInteractive({ useHandCursor: true }).on('pointerdown', start);
     this.input.keyboard.once('keydown-ENTER', start);
     this.cameras.main.fadeIn(TRANSITION.FADE_DURATION, 0, 0, 0);
+    startAmbientMusic();
   }
 }
