@@ -74,8 +74,12 @@ class SwampEnemy {
     this.sprite.body.setAllowGravity(false);
     fitSpriteHeight(this.sprite, this.cfg.HEIGHT);
     this.sprite.setDepth(5);
-    this.sprite.setCollideWorldBounds(true);
-    this.sprite.body.setSize(30, 20);
+    this.sprite.setCollideWorldBounds(false);
+    this.sprite.body.setImmovable(true);
+    const bw = 30 / this.sprite.scaleX;
+    const bh = 20 / this.sprite.scaleY;
+    this.sprite.body.setSize(bw, bh);
+    this.sprite.body.setOffset((this.sprite.width - bw) * 0.5, this.sprite.height - bh - 2);
     this.sprite.setData('entity', this);
     this.sprite.setTint(this.cfg.TINT);
 

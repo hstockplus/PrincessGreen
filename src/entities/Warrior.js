@@ -24,6 +24,8 @@ export class Warrior {
     this.baseScale = 1;
     this.walkPhase = 0;
     this.attackAnimUntil = 0;
+    this.bodyW = 28;
+    this.bodyH = 20;
 
     const key = scene.textures.exists(ASSETS.WARRIOR) ? ASSETS.WARRIOR : null;
     if (key) {
@@ -43,17 +45,15 @@ export class Warrior {
     }
 
     this.baseScale = this.sprite.scaleX;
-    this.sprite.setCollideWorldBounds(true);
+    // 不用世界边界刚体碰撞（易卡墙），改用软边界 clamp
+    this.sprite.setCollideWorldBounds(false);
     this.sprite.body.setAllowGravity(false);
+    this.sprite.body.setBounce(0, 0);
+    this.sprite.body.setDrag(0, 0);
+    this.sprite.body.setMaxVelocity(PLAYER.SPEED, PLAYER.SPEED);
     this.sprite.setDepth(10);
     this.applyFacing();
-    const bw = 28;
-    const bh = 22;
-    this.sprite.body.setSize(bw / this.sprite.scaleX, bh / this.sprite.scaleY);
-    this.sprite.body.setOffset(
-      (this.sprite.width - bw / this.sprite.scaleX) * 0.5,
-      this.sprite.height - bh / this.sprite.scaleY - 2,
-    );
+    this.syncBody();
 
     this.cursors = scene.input.keyboard.createCursorKeys();
     this.keys = scene.input.keyboard.addKeys({
@@ -70,9 +70,11 @@ export class Warrior {
 
     scene.input.on('pointerdown', (p) => {
       if (gameState.dialogueActive || p.button !== 0) return;
-      // 避开左右触控区，避免点按钮时误瞄准改朝向
       if (p.x < 220 || p.x > GAME.WIDTH - 220) return;
-      this.aimFromPointer(p);
+      // 仅站定时鼠标瞄准攻击；移动中朝向跟键盘
+      if (!this.isMoveInputDown()) {
+        this.aimFromPointer(p);
+      }
       this.tryAttack();
     });
   }
@@ -81,6 +83,30 @@ export class Warrior {
 
   applyFacing() {
     setFacing(this.sprite, this.facing, { artFacesRight: ACTOR.FACE_RIGHT });
+  }
+
+  /** 保持碰撞盒世界尺寸恒定，避免近大远小缩放导致卡边 */
+  syncBody() {
+    const sx = Math.max(0.01, this.sprite.scaleX);
+    const sy = Math.max(0.01, this.sprite.scaleY);
+    const bw = this.bodyW / sx;
+    const bh = this.bodyH / sy;
+    this.sprite.body.setSize(bw, bh);
+    this.sprite.body.setOffset(
+      (this.sprite.width - bw) * 0.5,
+      this.sprite.height - bh - 2,
+    );
+  }
+
+  isMoveInputDown() {
+    const m = this.mobile || {};
+    return !!(
+      this.cursors.left.isDown || this.cursors.right.isDown
+      || this.cursors.up.isDown || this.cursors.down.isDown
+      || this.keys.a.isDown || this.keys.d.isDown
+      || this.keys.w.isDown || this.keys.s.isDown
+      || m.left || m.right || m.up || m.down || m.forward
+    );
   }
 
   aimFromPointer(p) {
@@ -131,22 +157,20 @@ export class Warrior {
       vx = (vx / len) * PLAYER.SPEED;
       vy = (vy / len) * PLAYER.SPEED;
       this.aimAngle = Math.atan2(vy, vx);
-      // 水平分量决定朝向；纯上下时保持原朝向
-      if (Math.abs(vx) > 0.01) {
-        this.facing = vx > 0 ? 1 : -1;
+      // 朝向严格跟随键盘/摇杆水平方向
+      if (vx > 0.01) {
+        this.facing = 1;
+        this.applyFacing();
+      } else if (vx < -0.01) {
+        this.facing = -1;
         this.applyFacing();
       }
-    }
-
-    // 仅在非触控 UI 区域按住指针时才用鼠标改朝向（避免点「跑/攻」扭头）
-    const ptr = this.scene.input.activePointer;
-    if (ptr?.isDown && ptr.x > 220 && ptr.x < GAME.WIDTH - 220 && !m.forward && !m.left && !m.right) {
-      this.aimFromPointer(ptr);
     }
 
     this.sprite.body.setVelocity(vx, vy);
     this.clampWalkBand();
     this.refreshDepthScale(moving ? dt : 0);
+    this.syncBody();
 
     if (Phaser.Input.Keyboard.JustDown(this.keys.j) || m.attack) this.tryAttack();
     if (Phaser.Input.Keyboard.JustDown(this.keys.k) || m.skill) this.tryBladeQi();
@@ -168,66 +192,67 @@ export class Warrior {
     const yMin = GAME.HEIGHT * WORLD.WALK_Y_MIN;
     const yMax = GAME.HEIGHT * WORLD.WALK_Y_MAX;
     applyDepthScale(this.sprite, this.baseScale, this.sprite.y, yMin, yMax);
+    this.sprite.setOrigin(0.5, 1);
 
-    // 走路轻颤（攻击动画期间减弱）
     if (dt > 0 && this.scene.time.now > this.attackAnimUntil) {
       this.walkPhase += dt * 0.014;
-      const bob = Math.sin(this.walkPhase) * 2.2;
-      this.sprite.setAngle(Math.sin(this.walkPhase * 0.5) * 1.8 * this.facing);
-      // 用 origin 微调视觉上下颤，不改物理 y
-      this.sprite.setOrigin(0.5, 1 - bob * 0.002);
+      this.sprite.setAngle(Math.sin(this.walkPhase * 0.5) * 1.5 * this.facing);
     } else if (this.scene.time.now > this.attackAnimUntil) {
       this.sprite.setAngle(0);
-      this.sprite.setOrigin(0.5, 1);
     }
   }
 
   clampWalkBand() {
     const yMin = GAME.HEIGHT * WORLD.WALK_Y_MIN;
     const yMax = GAME.HEIGHT * WORLD.WALK_Y_MAX;
+    const pad = 48;
+    const maxX = this.scene.physics.world.bounds.width - pad;
     this.sprite.y = Phaser.Math.Clamp(this.sprite.y, yMin, yMax);
-    this.sprite.x = Phaser.Math.Clamp(this.sprite.x, 40, this.scene.physics.world.bounds.width - 40);
+    this.sprite.x = Phaser.Math.Clamp(this.sprite.x, pad, maxX);
+    // 贴边时清掉朝墙外的速度分量，防止物理卡住
+    if (this.sprite.x <= pad && this.sprite.body.velocity.x < 0) this.sprite.body.setVelocityX(0);
+    if (this.sprite.x >= maxX && this.sprite.body.velocity.x > 0) this.sprite.body.setVelocityX(0);
+    if (this.sprite.y <= yMin && this.sprite.body.velocity.y < 0) this.sprite.body.setVelocityY(0);
+    if (this.sprite.y >= yMax && this.sprite.body.velocity.y > 0) this.sprite.body.setVelocityY(0);
   }
 
-  refreshAimFromMouse() {
-    const ptr = this.scene.input.activePointer;
-    if (!ptr || ptr.x < 0) return;
-    if (ptr.x < 220 || ptr.x > GAME.WIDTH - 220) return;
-    this.aimFromPointer(ptr);
+  facingAngle() {
+    return this.facing > 0 ? 0 : Math.PI;
   }
 
   tryAttack() {
     const now = this.scene.time.now;
     if (now - this.lastAttack < PLAYER.ATTACK_COOLDOWN) return null;
-    this.refreshAimFromMouse();
     this.lastAttack = now;
     this.attackAnimUntil = now + 220;
+
+    // 移动中攻击朝向=面朝方向；站定可用鼠标
+    if (this.isMoveInputDown()) {
+      this.aimAngle = this.facingAngle();
+    } else {
+      const ptr = this.scene.input.activePointer;
+      if (ptr && ptr.isDown && ptr.x > 220 && ptr.x < GAME.WIDTH - 220) {
+        this.aimFromPointer(ptr);
+      } else {
+        this.aimAngle = this.facingAngle();
+      }
+    }
     eventBus.emit(Events.PLAYER_ATTACK);
 
-    const ang = this.facing > 0 ? 0 : Math.PI;
-    // 若有明确瞄准角且非纯上下，用瞄准角
-    if (Math.abs(Math.cos(this.aimAngle)) > 0.2) {
-      // keep aimAngle
-    } else {
-      this.aimAngle = ang;
-    }
     const attackAng = this.aimAngle;
     const ox = this.sprite.x + Math.cos(attackAng) * 48;
-    const oy = this.sprite.y - 52 + Math.sin(attackAng) * 20;
+    const oy = this.sprite.y - 52;
 
     CombatFX.slash(this.scene, ox, oy, attackAng);
     CombatFX.lunge(this.sprite, this.facing, 12);
-    this.sprite.setAngle(this.facing * -8);
-    this.scene.time.delayedCall(160, () => {
-      if (this.sprite?.active) this.sprite.setAngle(0);
-    });
 
     const rect = this.scene.add.rectangle(ox, oy, PLAYER.ATTACK_RANGE_W, PLAYER.ATTACK_RANGE_H, 0xffe8a0, 0.2)
       .setAngle(Phaser.Math.RadToDeg(attackAng))
       .setDepth(45);
     this.scene.physics.add.existing(rect);
     rect.body.setAllowGravity(false);
-    rect.body.setImmovable(true);
+    // 攻击框不参与碰撞推挤
+    rect.body.moves = false;
 
     this.attackBox = {
       rect,
@@ -246,19 +271,26 @@ export class Warrior {
     const now = this.scene.time.now;
     if (now - this.lastQi < PLAYER.QI_COOLDOWN) return null;
     if (gameState.mp < PLAYER.QI_COST) return null;
-    this.refreshAimFromMouse();
     this.lastQi = now;
     this.attackAnimUntil = now + 280;
     gameState.mp -= PLAYER.QI_COST;
+
+    if (this.isMoveInputDown()) {
+      this.aimAngle = this.facingAngle();
+    } else {
+      const ptr = this.scene.input.activePointer;
+      if (ptr && ptr.isDown && ptr.x > 220 && ptr.x < GAME.WIDTH - 220) {
+        this.aimFromPointer(ptr);
+      } else {
+        this.aimAngle = this.facingAngle();
+      }
+    }
     eventBus.emit(Events.PLAYER_SKILL);
     eventBus.emit(Events.HUD_REFRESH);
 
-    const ang = Math.abs(Math.cos(this.aimAngle)) > 0.15
-      ? this.aimAngle
-      : (this.facing > 0 ? 0 : Math.PI);
-    this.aimAngle = ang;
+    const ang = this.aimAngle;
     const qx = this.sprite.x + Math.cos(ang) * 40;
-    const qy = this.sprite.y - 56 + Math.sin(ang) * 16;
+    const qy = this.sprite.y - 56;
     CombatFX.skillBurst(this.scene, qx, qy, ang);
     CombatFX.lunge(this.sprite, this.facing, 16);
 

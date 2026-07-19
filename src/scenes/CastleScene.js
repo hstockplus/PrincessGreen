@@ -200,6 +200,27 @@ export class CastleScene extends Phaser.Scene {
     this.hud.refresh();
 
     this.boss.update(time, delta, this.warrior.x, this.warrior.y);
+
+    // 与恶龙重叠时轻推开玩家，避免贴脸卡住
+    if (this.boss.alive && this.boss.sprite?.active) {
+      const dx = this.warrior.x - this.boss.sprite.x;
+      const dy = this.warrior.y - this.boss.sprite.y;
+      const dist = Math.hypot(dx, dy);
+      const minDist = 70;
+      if (dist > 1 && dist < minDist) {
+        const nx = dx / dist;
+        const ny = dy / dist;
+        this.warrior.sprite.x = this.boss.sprite.x + nx * minDist;
+        this.warrior.sprite.y = this.boss.sprite.y + ny * minDist;
+        this.warrior.clampWalkBand();
+      }
+      // 恶龙自身也限制在行走带内
+      const yMin = GAME.HEIGHT * WORLD.WALK_Y_MIN;
+      const yMax = GAME.HEIGHT * WORLD.WALK_Y_MAX;
+      this.boss.sprite.y = Phaser.Math.Clamp(this.boss.sprite.y, yMin, yMax);
+      this.boss.sprite.x = Phaser.Math.Clamp(this.boss.sprite.x, 80, GAME.WIDTH - 80);
+    }
+
     this.resolvePlayerHits();
     this.resolveBossHits();
 

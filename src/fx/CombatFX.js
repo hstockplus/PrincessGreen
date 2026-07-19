@@ -70,13 +70,13 @@ export class CombatFX {
     });
   }
 
-  /** 角色出刀时身体前倾 */
+  /** 角色出刀时前倾（只改角度/缩放，不改物理坐标，避免卡住） */
   static lunge(sprite, facing, dist = 10) {
     if (!sprite?.active) return;
-    const ox = sprite.x;
+    const baseAngle = sprite.angle || 0;
     sprite.scene.tweens.add({
       targets: sprite,
-      x: ox + facing * dist,
+      angle: baseAngle + facing * (-10),
       duration: 70,
       yoyo: true,
       ease: 'Sine.easeOut',

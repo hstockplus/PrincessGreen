@@ -150,8 +150,8 @@ export const ACTOR = {
   FROG_H: 70,
   FROG_BEAST_H: 188,
   BUG_H: 36,
-  /** 当前勇士立绘实际朝左；前进(右)时需要 flipX */
-  FACE_RIGHT: false,
+  /** 勇士侧视立绘默认朝右；按右键不翻转，按左键 flipX */
+  FACE_RIGHT: true,
 };
 
 export const FONT = {

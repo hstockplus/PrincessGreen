@@ -40,15 +40,24 @@ export class DragonBoss {
     const key = scene.textures.exists(ASSETS.DRAGON) ? ASSETS.DRAGON : 'dragon_placeholder';
     this.sprite = scene.physics.add.sprite(x, y, key);
     this.sprite.setDepth(5);
-    this.sprite.setCollideWorldBounds(true);
+    // 不与世界边界刚体碰撞，避免与玩家互相卡住
+    this.sprite.setCollideWorldBounds(false);
     this.sprite.body.setAllowGravity(false);
+    this.sprite.body.setImmovable(true);
+    this.sprite.body.moves = true;
     this.sprite.setOrigin(0.5, 1);
     if (key === ASSETS.DRAGON) {
       fitActor(this.sprite, 'dragon');
-      this.sprite.body.setSize(this.sprite.width * 0.5, this.sprite.height * 0.35);
-      this.sprite.body.setOffset(this.sprite.width * 0.25, this.sprite.height * 0.55);
+      // 缩小受击/重叠盒，仅脚底附近，避免大体积挡路
+      const bw = 90 / this.sprite.scaleX;
+      const bh = 40 / this.sprite.scaleY;
+      this.sprite.body.setSize(bw, bh);
+      this.sprite.body.setOffset(
+        (this.sprite.width - bw) * 0.5,
+        this.sprite.height - bh - 4,
+      );
     } else {
-      this.sprite.body.setSize(160, 60);
+      this.sprite.body.setSize(100, 40);
     }
     this.sprite.setData('entity', this);
     // 恶龙立绘默认朝左
@@ -139,10 +148,12 @@ export class DragonBoss {
     this.clawHitbox = this.scene.add.rectangle(hx, hy, 100, 70, 0xff4422, 0.35);
     this.scene.physics.add.existing(this.clawHitbox);
     this.clawHitbox.body.setAllowGravity(false);
+    this.clawHitbox.body.moves = false;
 
+    // 只做角度前扑动画，不改 x，避免把玩家挤进墙角
     this.scene.tweens.add({
       targets: this.sprite,
-      x: this.sprite.x + dir * 40,
+      angle: dir * 6,
       duration: 120,
       yoyo: true,
     });
@@ -152,6 +163,7 @@ export class DragonBoss {
         this.clawHitbox.destroy();
         this.clawHitbox = null;
       }
+      if (this.sprite?.active) this.sprite.setAngle(0);
       this.phase = 'idle';
     });
   }
