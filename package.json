@@ -1,25 +1,17 @@
 {
   "name": "princess-green",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:open": "vite --open",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "npm run build && bash \"$HOME/.agents/skills/here-now/scripts/publish.sh\" dist/ --title \"青蛙公主\" --description \"月影传说风格武侠RPG\" --spa --client cursor",
-    "test": "playwright test --project=chromium-headless",
-    "test:chapter1": "playwright test chapter1-keyboard --project=chromium-headless",
-    "test:browser": "playwright test --project=chrome-browser",
-    "test:chapter1:browser": "playwright test chapter1-keyboard --project=chrome-browser",
-    "test:ui": "playwright test --ui"
+    "deploy": "npm run build && bash \"$HOME/.agents/skills/here-now/scripts/publish.sh\" dist/ --title \"青蛙公主\" --description \"暗黑水墨横版动作RPG\" --spa --client cursor"
   },
   "dependencies": {
-    "phaser": "^4.1.0"
+    "phaser": "^3.87.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1",
-    "gh-pages": "^6.3.0",
     "vite": "^7.3.1"
   }
 }
