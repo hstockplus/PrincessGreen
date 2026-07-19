@@ -12,6 +12,7 @@ class GameState {
     this.branch = null; // 'win' | 'lose' | 'question'
     this.phase = 'boot';
     this.storyComplete = false;
+    this.dialogueActive = false;
   }
 }
 

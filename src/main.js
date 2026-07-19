@@ -20,6 +20,10 @@ const config = {
   height: GAME.HEIGHT,
   parent: 'game-container',
   backgroundColor: COLORS.BG_DARK,
+  input: {
+    activePointers: 3,
+    touch: { capture: true },
+  },
   physics: {
     default: 'arcade',
     arcade: {

@@ -6,6 +6,7 @@ import { gameState } from '../utils/gameState.js';
 import { sound } from '../utils/sound.js';
 import { eventBus, Events } from '../core/EventBus.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
+import { MobileControls, isTouchDevice } from '../ui/MobileControls.js';
 
 const LEVEL_WIDTH = GAME.WIDTH * 4.5;
 
@@ -38,7 +39,10 @@ export class ChaseScene extends Phaser.Scene {
     this.frogPrincess.setImmovable(true);
 
     this.hud = new HUD(this);
-    this.hud.setHint('强制前进！空格跳跃 · Shift 金蟾脱壳（无敌冲刺）');
+    this.hud.setHint(isTouchDevice()
+      ? '强制前进！跳躲避 · 轻功无敌冲刺'
+      : '强制前进！空格跳跃 · Shift 金蟾脱壳（无敌冲刺）');
+    this.mobile = new MobileControls(this, { showDash: true, showInteract: false, showAttack: false });
     this.add.text(GAME.WIDTH / 2, 36, '第四幕 · 青蛙公主复仇记', {
       fontFamily: FONT.FAMILY,
       fontSize: '24px',
@@ -145,6 +149,10 @@ export class ChaseScene extends Phaser.Scene {
       this.warrior.sprite.x = minX + 80;
     }
 
+    const pad = this.mobile.consume();
+    // 逃生关强制向右倾向
+    if (!pad.left && !pad.right) pad.right = true;
+    this.warrior.setMobileState(pad);
     this.warrior.update(false);
 
     // frog princess chases
@@ -153,7 +161,7 @@ export class ChaseScene extends Phaser.Scene {
     this.frogPrincess.x += Math.sign(dx) * Math.min(Math.abs(dx), CHASE.PRINCESS_SPEED * (delta / 1000) * 1.2);
     this.frogPrincess.y = this.warrior.y - 10;
 
-    if (Phaser.Input.Keyboard.JustDown(this.warrior.keys.shift)) {
+    if (this.warrior.justDash()) {
       this.tryDash();
     }
 
@@ -171,7 +179,9 @@ export class ChaseScene extends Phaser.Scene {
     });
 
     const cd = Math.max(0, CHASE.DASH_COOLDOWN - (time - this.lastDash));
-    this.dashText.setText(cd > 0 ? `金蟾脱壳 ${Math.ceil(cd / 1000)}s` : '金蟾脱壳就绪 [Shift]');
+    this.dashText.setText(cd > 0
+      ? `金蟾脱壳 ${Math.ceil(cd / 1000)}s`
+      : (isTouchDevice() ? '金蟾脱壳就绪 [轻功]' : '金蟾脱壳就绪 [Shift]'));
 
     this.hud.refresh();
     if (gameState.hp <= 0) this.fail();

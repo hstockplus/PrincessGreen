@@ -5,6 +5,7 @@ import { eventBus, Events } from '../core/EventBus.js';
 
 /**
  * 勇士移动 / 二段跳 / 攻击 / 灵芝
+ * mobile: { left,right,up,down,jump,attack,interact,dash,use } 一次性/持续状态
  */
 export class WarriorController {
   constructor(scene, x, y, { canAttack = false } = {}) {
@@ -15,26 +16,26 @@ export class WarriorController {
     this.invulnUntil = 0;
     this.facing = 1;
     this.lastHitBox = null;
+    this.mobile = null;
 
     this.sprite = scene.physics.add.sprite(x, y, 'tex_warrior');
     this.sprite.setCollideWorldBounds(true);
     this.sprite.setBounce(0);
     this.sprite.body.setSize(PLAYER.WIDTH * 0.55, PLAYER.HEIGHT * 0.85);
 
-    // slam-in entrance (design-game juice)
     this.sprite.setAlpha(0);
     this.sprite.y -= 80;
     scene.tweens.add({
       targets: this.sprite,
-      y: y,
+      y,
       alpha: 1,
       duration: 450,
       ease: 'Bounce.easeOut',
       onComplete: () => scene.cameras.main.shake(80, 0.004),
     });
 
-    this.cursors = scene.input.keyboard.createCursorKeys();
-    this.keys = scene.input.keyboard.addKeys({
+    this.cursors = scene.input.keyboard?.createCursorKeys?.();
+    this.keys = scene.input.keyboard?.addKeys?.({
       a: Phaser.Input.Keyboard.KeyCodes.A,
       d: Phaser.Input.Keyboard.KeyCodes.D,
       w: Phaser.Input.Keyboard.KeyCodes.W,
@@ -46,21 +47,35 @@ export class WarriorController {
     });
 
     scene.input.on('pointerdown', (p) => {
-      if (this.canAttack && p.leftButtonDown()) this.tryAttack();
+      if (gameState.dialogueActive) return;
+      if (!this.canAttack) return;
+      // 忽略 UI 区域点击（右侧/左侧控制区）
+      const sx = p.x;
+      if (sx < 220 || sx > GAME_SAFE_RIGHT()) return;
+      this.tryAttack();
     });
   }
 
+  setMobileState(mobile) {
+    this.mobile = mobile;
+  }
+
   update(blocked = false) {
-    if (blocked || !this.sprite?.body) {
+    if (blocked || gameState.dialogueActive || !this.sprite?.body) {
       this.sprite?.body?.setVelocityX(0);
       return;
     }
 
-    const left = this.cursors.left.isDown || this.keys.a.isDown;
-    const right = this.cursors.right.isDown || this.keys.d.isDown;
-    const jumpPressed = Phaser.Input.Keyboard.JustDown(this.cursors.up)
-      || Phaser.Input.Keyboard.JustDown(this.keys.w)
-      || Phaser.Input.Keyboard.JustDown(this.keys.space);
+    const m = this.mobile || {};
+    const left = !!(this.cursors?.left?.isDown || this.keys?.a?.isDown || m.left);
+    const right = !!(this.cursors?.right?.isDown || this.keys?.d?.isDown || m.right);
+    const jumpPressed = !!(
+      (this.cursors?.up && Phaser.Input.Keyboard.JustDown(this.cursors.up))
+      || (this.keys?.w && Phaser.Input.Keyboard.JustDown(this.keys.w))
+      || (this.keys?.space && Phaser.Input.Keyboard.JustDown(this.keys.space))
+      || m.jump
+      || m.up
+    );
 
     let moving = false;
     if (left) {
@@ -77,10 +92,8 @@ export class WarriorController {
       this.sprite.setVelocityX(0);
     }
 
-    if (moving && this.sprite.anims) {
-      if (this.scene.textures.exists('sheet_warrior')) {
-        this.sprite.play('warrior-walk', true);
-      }
+    if (moving && this.scene.anims.exists('warrior-walk')) {
+      this.sprite.play('warrior-walk', true);
     } else if (this.sprite.anims) {
       this.sprite.anims.stop();
       this.sprite.setTexture('tex_warrior');
@@ -96,11 +109,13 @@ export class WarriorController {
       eventBus.emit(Events.PLAYER_JUMP);
     }
 
-    if (this.canAttack && Phaser.Input.Keyboard.JustDown(this.keys.j)) {
+    if (this.canAttack && (
+      (this.keys?.j && Phaser.Input.Keyboard.JustDown(this.keys.j)) || m.attack
+    )) {
       this.tryAttack();
     }
 
-    if (Phaser.Input.Keyboard.JustDown(this.keys.q)) {
+    if ((this.keys?.q && Phaser.Input.Keyboard.JustDown(this.keys.q)) || m.use) {
       this.useLingzhi();
     }
 
@@ -111,7 +126,24 @@ export class WarriorController {
     }
   }
 
+  justInteract() {
+    const m = this.mobile || {};
+    return !!(
+      (this.keys?.e && Phaser.Input.Keyboard.JustDown(this.keys.e))
+      || m.interact
+    );
+  }
+
+  justDash() {
+    const m = this.mobile || {};
+    return !!(
+      (this.keys?.shift && Phaser.Input.Keyboard.JustDown(this.keys.shift))
+      || m.dash
+    );
+  }
+
   tryAttack() {
+    if (gameState.dialogueActive) return null;
     const now = this.scene.time.now;
     if (now - this.lastAttack < PLAYER.ATTACK_COOLDOWN) return null;
     this.lastAttack = now;
@@ -179,4 +211,8 @@ export class WarriorController {
   destroy() {
     this.sprite.destroy();
   }
+}
+
+function GAME_SAFE_RIGHT() {
+  return 1280 - 240;
 }

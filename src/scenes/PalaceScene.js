@@ -23,6 +23,12 @@ export class PalaceScene extends Phaser.Scene {
       color: COLORS.GOLD_LIGHT,
     }).setOrigin(0.5);
 
+    this.add.text(GAME.WIDTH / 2, GAME.HEIGHT - 28, '点击屏幕继续对话', {
+      fontFamily: FONT.FAMILY,
+      fontSize: '16px',
+      color: COLORS.UI_MUTED,
+    }).setOrigin(0.5).setDepth(50);
+
     this.add.image(GAME.WIDTH * 0.55, GAME.HEIGHT * 0.55, 'tex_king').setScale(1.8);
     this.add.image(GAME.WIDTH * 0.32, GAME.HEIGHT * 0.58, 'tex_warrior').setScale(1.6);
 

@@ -7,6 +7,7 @@ import { gameState } from '../utils/gameState.js';
 import { sound } from '../utils/sound.js';
 import { eventBus, Events } from '../core/EventBus.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
+import { MobileControls, isTouchDevice } from '../ui/MobileControls.js';
 
 export class CastleScene extends Phaser.Scene {
   constructor() {
@@ -36,8 +37,12 @@ export class CastleScene extends Phaser.Scene {
 
     this.fireballs = this.physics.add.group();
     this.hud = new HUD(this);
-    this.hud.setHint('J / 左键攻击 · Q 用灵芝 · 躲开火球');
+    this.hud.setHint(isTouchDevice()
+      ? '左摇杆移动 · 攻/跳 · 药回血 · 点击对话框继续'
+      : 'J / 左键攻击 · Q 用灵芝 · 躲开火球 · 点击继续对话');
     this.dialog = new DialogBox(this);
+    this.mobile = new MobileControls(this, { showAttack: true, showInteract: false });
+    this.mobile.setEnabled(false);
 
     this.dragonBarBg = this.add.rectangle(GAME.WIDTH - 240, 24, 200, 16, 0x201010, 0.85).setOrigin(0, 0.5).setDepth(900);
     this.dragonBar = this.add.rectangle(GAME.WIDTH - 238, 24, 196, 12, 0x5a8a60, 1).setOrigin(0, 0.5).setDepth(901);
@@ -145,7 +150,10 @@ export class CastleScene extends Phaser.Scene {
     this.state = 'battle';
     this.setBattleUi(true);
     this.princess.setVisible(false);
-    this.hud.setHint('J / 左键「金蟾刀法」· Q 灵芝回血 · 躲开火球');
+    this.mobile.setEnabled(true);
+    this.hud.setHint(isTouchDevice()
+      ? '摇杆走位 · 攻打龙 · 药回血'
+      : 'J / 左键「金蟾刀法」· Q 灵芝回血 · 躲开火球');
     sound.playBgm('battle');
   }
 
@@ -164,6 +172,8 @@ export class CastleScene extends Phaser.Scene {
   }
 
   updateBattle() {
+    const pad = this.mobile.consume();
+    this.warrior.setMobileState(pad);
     this.warrior.update(false);
     this.hud.refresh();
     this.updateDragonHpBar();
@@ -223,6 +233,7 @@ export class CastleScene extends Phaser.Scene {
 
   async runKissReveal(result) {
     this.state = 'reveal';
+    this.mobile.setEnabled(false);
     this.warrior.sprite.setVelocity(0, 0);
     this.princess.setVisible(true).setPosition(GAME.WIDTH * 0.55, GAME.HEIGHT - 150);
 
@@ -259,6 +270,7 @@ export class CastleScene extends Phaser.Scene {
     this.dialog.update();
     if (this.state === 'battle') this.updateBattle();
     else if (this.state === 'intro' || this.state === 'reveal' || this.state === 'aftermath') {
+      this.mobile.setEnabled(false);
       this.warrior.update(true);
     }
   }

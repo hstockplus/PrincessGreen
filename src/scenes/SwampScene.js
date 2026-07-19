@@ -7,6 +7,7 @@ import { gameState } from '../utils/gameState.js';
 import { sound } from '../utils/sound.js';
 import { eventBus, Events } from '../core/EventBus.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
+import { MobileControls, isTouchDevice } from '../ui/MobileControls.js';
 
 export class SwampScene extends Phaser.Scene {
   constructor() {
@@ -31,8 +32,11 @@ export class SwampScene extends Phaser.Scene {
     this.physics.add.collider(this.warrior.sprite, this.ground);
 
     this.hud = new HUD(this);
-    this.hud.setHint('← → 移动 · 空格跳跃（二段跳）· E 采集/对话 · 前往最右侧');
+    this.hud.setHint(isTouchDevice()
+      ? '左摇杆移动 · 跳/互动 · 走到最右侧进入城堡'
+      : '← → 移动 · 空格跳跃 · E 采集/对话 · 前往最右侧');
     this.dialog = new DialogBox(this);
+    this.mobile = new MobileControls(this, { showInteract: true, showAttack: false });
     this.talkedFrog = false;
     this.leaving = false;
 
@@ -168,12 +172,15 @@ export class SwampScene extends Phaser.Scene {
 
   update() {
     this.dialog.update();
+    this.mobile.setEnabled(!this.dialog.active);
+    const pad = this.mobile.consume();
+    this.warrior.setMobileState(pad);
     this.warrior.update(this.dialog.active);
     this.hud.refresh();
 
     if (this.dialog.active) return;
 
-    if (Phaser.Input.Keyboard.JustDown(this.warrior.keys.e)) {
+    if (this.warrior.justInteract()) {
       const dFrog = Phaser.Math.Distance.Between(this.warrior.x, this.warrior.y, this.frog.x, this.frog.y);
       if (!this.talkedFrog && dFrog < 70) this.talkFrog();
       else this.tryCollect();
