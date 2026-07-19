@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME, COLORS, FONT, ITEM, BUG, WORLD } from '../utils/constants.js';
+import { GAME, COLORS, FONT, ITEM, BUG } from '../utils/constants.js';
 import { DialogBox } from '../ui/DialogBox.js';
 import { HUD } from '../ui/HUD.js';
 import { Warrior } from '../entities/Warrior.js';
@@ -10,6 +10,8 @@ import { eventBus, Events } from '../core/EventBus.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
 import { MobileControls, isTouchDevice } from '../ui/MobileControls.js';
 import { ASSETS, fitActor, fitSpriteHeight } from '../art/AssetLoader.js';
+import { ParallaxBackground, setupFollowCamera } from '../world/ParallaxBackground.js';
+import { CombatFX } from '../fx/CombatFX.js';
 
 export class SwampScene extends Phaser.Scene {
   constructor() {
@@ -25,14 +27,14 @@ export class SwampScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, worldW, GAME.HEIGHT);
     this.cameras.main.setBounds(0, 0, worldW, GAME.HEIGHT);
 
-    this.drawSwamp(worldW);
+    this.parallax = new ParallaxBackground(this, ASSETS.BG_SWAMP, worldW, { overlay: 0.2 });
     this.createLingzhi();
     this.createFrog();
     this.createBugs();
 
     const walkY = GAME.HEIGHT * 0.72;
     this.warrior = new Warrior(this, 140, walkY);
-    this.cameras.main.startFollow(this.warrior.sprite, true, 0.08, 0.08);
+    setupFollowCamera(this, this.warrior.sprite, { lerp: 0.12 });
 
     this.hud = new HUD(this);
     this.hud.setQuest('前往地图东侧恶龙城堡');
@@ -69,21 +71,6 @@ export class SwampScene extends Phaser.Scene {
     this.leaving = true;
     this.cameras.main.fadeOut(400, 0, 0, 0);
     this.time.delayedCall(420, () => this.scene.start('CastleScene'));
-  }
-
-  drawSwamp(worldW) {
-    const tileW = GAME.WIDTH;
-    for (let i = 0; i * tileW < worldW + tileW; i++) {
-      const bg = this.add.image(i * tileW + tileW / 2, GAME.HEIGHT / 2, ASSETS.BG_SWAMP).setDepth(-10);
-      bg.setDisplaySize(tileW + 4, GAME.HEIGHT);
-    }
-    this.add.rectangle(worldW / 2, GAME.HEIGHT / 2, worldW, GAME.HEIGHT, 0x000000, 0.18).setDepth(-9);
-
-    // 平面地面纹理提示（非平台）
-    // TODO: 替换为实际美术资源
-    const floor = this.add.graphics().setDepth(-8);
-    floor.fillStyle(0x1a2418, 0.35);
-    floor.fillRect(0, GAME.HEIGHT * WORLD.WALK_Y_MIN, worldW, GAME.HEIGHT * (WORLD.WALK_Y_MAX - WORLD.WALK_Y_MIN + 0.05));
   }
 
   createLingzhi() {
@@ -178,11 +165,13 @@ export class SwampScene extends Phaser.Scene {
     this.lingzhiGroup.getChildren().forEach((item) => {
       if (item.getData('taken')) return;
       const d = Phaser.Math.Distance.Between(this.warrior.x, this.warrior.y, item.x, item.y);
-      if (d < 60 && gameState.lingzhi < ITEM.BAG_MAX) {
+      if (d < 70 && gameState.lingzhi < ITEM.BAG_MAX) {
         item.setData('taken', true);
         item.setVisible(false);
         gameState.lingzhi += 1;
-        eventBus.emit(Events.ITEM_PICKUP);
+        eventBus.emit(Events.ITEM_PICKUP, { id: 'lingzhi', amount: 1, left: gameState.lingzhi });
+        eventBus.emit(Events.HUD_REFRESH);
+        CombatFX.pickupPop(this, item.x, item.y, '+灵芝');
         this.hud.refresh();
       }
     });
@@ -198,6 +187,7 @@ export class SwampScene extends Phaser.Scene {
           box.hitSet.add(i);
           bug.takeDamage(box.damage);
           eventBus.emit(Events.HIT);
+          CombatFX.hitSpark(this, bug.sprite.x, bug.sprite.y - 20);
         }
       });
     }
@@ -212,6 +202,7 @@ export class SwampScene extends Phaser.Scene {
           qi.markHit(id);
           bug.takeDamage(qi.damage);
           eventBus.emit(Events.HIT);
+          CombatFX.hitSpark(this, bug.sprite.x, bug.sprite.y - 20);
         }
       });
     });

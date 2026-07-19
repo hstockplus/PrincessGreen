@@ -19,6 +19,7 @@ export class MobileControls {
     this.interactPressed = false;
     this.dashPressed = false;
     this.usePressed = false;
+    this.forwardHeld = false;
 
     const depth = 1100;
     const joyX = 120;
@@ -102,9 +103,12 @@ export class MobileControls {
       } else {
         mkBtn(btnX - 110, btnY - 90, 40, '轻功', 0x8a6020, () => { this.dashPressed = true; });
       }
-      // 逃亡关也需要上下移动的主按钮位留给轻功，主圆改为占位提示
+      // 「前进」按住向右跑，松开停止强制右移倾向由场景处理
       if (!showAttack) {
-        mkBtn(btnX, btnY, 48, '跑', 0x2868b0, () => {});
+        const runBtn = mkBtn(btnX, btnY, 48, '前进', 0x2868b0, () => { this.forwardHeld = true; });
+        runBtn.on('pointerup', () => { this.forwardHeld = false; });
+        runBtn.on('pointerout', () => { this.forwardHeld = false; });
+        runBtn.on('pointerupoutside', () => { this.forwardHeld = false; });
       }
     }
     mkBtn(btnX + 10, btnY - 175, 34, '药', 0x4a2060, () => { this.usePressed = true; });
@@ -147,9 +151,10 @@ export class MobileControls {
   consume() {
     const out = {
       left: this.vector.x < -0.28,
-      right: this.vector.x > 0.28,
+      right: this.vector.x > 0.28 || this.forwardHeld,
       up: this.vector.y < -0.28,
       down: this.vector.y > 0.28,
+      forward: this.forwardHeld,
       attack: this.attackPressed,
       skill: this.skillPressed,
       interact: this.interactPressed,

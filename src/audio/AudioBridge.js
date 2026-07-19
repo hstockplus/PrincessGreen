@@ -38,9 +38,11 @@ export function initAudioBridge() {
   [
     [Events.PLAYER_JUMP, 'jump'],
     [Events.PLAYER_ATTACK, 'sword'],
+    [Events.PLAYER_SKILL, 'qi'],
     [Events.PLAYER_HURT, 'hurt'],
     [Events.PLAYER_HEAL, 'heal'],
     [Events.ITEM_PICKUP, 'pickup'],
+    [Events.ITEM_USE, 'heal'],
     [Events.DASH, 'dash'],
     [Events.HIT, 'hit'],
     [Events.TRANSFORM, 'transform'],

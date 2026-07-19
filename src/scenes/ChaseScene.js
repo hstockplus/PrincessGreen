@@ -8,6 +8,7 @@ import { eventBus, Events } from '../core/EventBus.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
 import { MobileControls, isTouchDevice } from '../ui/MobileControls.js';
 import { ASSETS, fitActor, setFacing } from '../art/AssetLoader.js';
+import { ParallaxBackground, setupFollowCamera, applyDepthScale } from '../world/ParallaxBackground.js';
 
 const LEVEL_WIDTH = GAME.WIDTH * 4.5;
 
@@ -29,12 +30,13 @@ export class ChaseScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, LEVEL_WIDTH, GAME.HEIGHT);
     this.cameras.main.setBounds(0, 0, LEVEL_WIDTH, GAME.HEIGHT);
 
-    this.drawTunnel();
+    this.parallax = new ParallaxBackground(this, ASSETS.BG_CHASE, LEVEL_WIDTH, { overlay: 0.25 });
     this.createHazards();
 
     const walkY = GAME.HEIGHT * 0.7;
     this.warrior = new Warrior(this, 220, walkY);
-    this.cameras.main.startFollow(this.warrior.sprite, true, 0.12, 0.08);
+    setupFollowCamera(this, this.warrior.sprite, { lerp: 0.14, deadzone: false });
+    this.frogBaseScale = 1;
 
     let beastKey = ASSETS.FROG_BEAST;
     if (!this.textures.exists(beastKey)) {
@@ -54,10 +56,11 @@ export class ChaseScene extends Phaser.Scene {
     this.frogPrincess = this.physics.add.sprite(40, walkY, beastKey);
     this.frogPrincess.setOrigin(0.5, 1);
     fitActor(this.frogPrincess, 'frogBeast');
+    this.frogBaseScale = this.frogPrincess.scaleX;
     this.frogPrincess.body.setAllowGravity(false);
     this.frogPrincess.setImmovable(true);
     this.frogPrincess.setDepth(8);
-    setFacing(this.frogPrincess, 1); // 追击时朝右（玩家前方）
+    setFacing(this.frogPrincess, 1, { artFacesRight: true });
 
     this.hud = new HUD(this);
     this.hud.setQuest('逃出密道！');
@@ -94,15 +97,6 @@ export class ChaseScene extends Phaser.Scene {
       this.warrior.sprite.setPosition(x, y);
       this.warrior.sprite.body.setVelocity(0, 0);
     });
-  }
-
-  drawTunnel() {
-    const tileW = GAME.WIDTH;
-    for (let i = 0; i * tileW < LEVEL_WIDTH + tileW; i++) {
-      const bg = this.add.image(i * tileW + tileW / 2, GAME.HEIGHT / 2, ASSETS.BG_CHASE).setDepth(-10);
-      bg.setDisplaySize(tileW + 4, GAME.HEIGHT);
-    }
-    this.add.rectangle(LEVEL_WIDTH / 2, GAME.HEIGHT / 2, LEVEL_WIDTH, GAME.HEIGHT, 0x000000, 0.15).setDepth(-9);
   }
 
   createHazards() {
@@ -187,6 +181,8 @@ export class ChaseScene extends Phaser.Scene {
       yMin,
       yMax,
     );
+    applyDepthScale(this.frogPrincess, this.frogBaseScale, this.frogPrincess.y, yMin, yMax);
+    setFacing(this.frogPrincess, 1, { artFacesRight: true });
 
     if (this.warrior.justDash()) this.tryDash();
 

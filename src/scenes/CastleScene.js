@@ -10,6 +10,7 @@ import { eventBus, Events } from '../core/EventBus.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
 import { MobileControls, isTouchDevice } from '../ui/MobileControls.js';
 import { ASSETS, showBackground, fitActor } from '../art/AssetLoader.js';
+import { CombatFX } from '../fx/CombatFX.js';
 
 export class CastleScene extends Phaser.Scene {
   constructor() {
@@ -156,6 +157,7 @@ export class CastleScene extends Phaser.Scene {
         box.hitSet.add('dragon');
         this.boss.takeDamage(box.damage);
         eventBus.emit(Events.HIT);
+        CombatFX.hitSpark(this, this.boss.sprite.x, this.boss.sprite.y - 40);
       }
     }
 
@@ -166,6 +168,7 @@ export class CastleScene extends Phaser.Scene {
         qi.markHit('dragon');
         this.boss.takeDamage(qi.damage);
         eventBus.emit(Events.HIT);
+        CombatFX.hitSpark(this, this.boss.sprite.x, this.boss.sprite.y - 40);
       }
     });
   }
