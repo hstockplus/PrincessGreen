@@ -1,14 +1,10 @@
 import Phaser from 'phaser';
-import { GAME, UI, WARRIOR, KING, TRANSITION } from '../core/Constants.js';
-import { gameState } from '../core/GameState.js';
-import { eventBus, Events } from '../core/EventBus.js';
-import { Warrior } from '../entities/Warrior.js';
-import { DialogueManager } from '../systems/DialogueManager.js';
+import { GAME, COLORS, FONT } from '../utils/constants.js';
+import { DialogBox } from '../ui/DialogBox.js';
+import { sound } from '../utils/sound.js';
+import { gameState } from '../utils/gameState.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
-import { showSceneBackground, BG_KEYS } from '../art/BackgroundArt.js';
-import { createDecorSprite, TEXTURE_KEYS } from '../art/AssetRegistry.js';
-import { createMobileControls } from '../ui/MobileControls.js';
-import palaceDialogue from '../../assets/dialogues/palace.json';
+import { ASSETS, showBackground, fitActor } from '../art/AssetLoader.js';
 
 export class PalaceScene extends Phaser.Scene {
   constructor() {
@@ -17,95 +13,65 @@ export class PalaceScene extends Phaser.Scene {
 
   create() {
     gameState.phase = 'palace';
-    gameState.chapter = 1;
-    this.physics.world.gravity.y = 0;
+    sound.playBgm('palace');
+    showBackground(this, ASSETS.BG_PALACE);
+    this.add.rectangle(GAME.WIDTH / 2, GAME.HEIGHT / 2, GAME.WIDTH, GAME.HEIGHT, 0x000000, 0.25).setDepth(0);
+    this.cameras.main.fadeIn(400, 0, 0, 0);
+    this.cameras.main.flash(250, 40, 30, 20);
 
-    showSceneBackground(this, BG_KEYS.PALACE);
+    this.add.text(GAME.WIDTH / 2, 48, '第一幕 · 王宫悬赏', {
+      fontFamily: FONT.FAMILY,
+      fontSize: '28px',
+      color: COLORS.GOLD_LIGHT,
+      stroke: '#000',
+      strokeThickness: 4,
+    }).setOrigin(0.5).setDepth(20);
 
-    this.add.text(GAME.WIDTH / 2, GAME.HEIGHT * 0.06, '王宫大殿', {
-      fontFamily: UI.FONT,
-      fontSize: `${Math.round(GAME.HEIGHT * UI.HEADING_RATIO)}px`,
-      color: '#ffd878',
-      stroke: '#301020',
-      strokeThickness: 3,
+    this.add.text(GAME.WIDTH / 2, GAME.HEIGHT - 28, '点击屏幕继续对话', {
+      fontFamily: FONT.FAMILY,
+      fontSize: '16px',
+      color: COLORS.UI_MUTED,
     }).setOrigin(0.5).setDepth(50);
 
-    this.king = createDecorSprite(this, GAME.WIDTH * 0.5, GAME.HEIGHT * 0.48, TEXTURE_KEYS.PRINCESS, KING.HEIGHT, 25);
-    this.warrior = new Warrior(this, GAME.WIDTH * 0.28, GAME.HEIGHT * 0.62);
+    // 立绘：勇士左、悬赏画像右（统一身高比例）
+    const warrior = this.add.image(GAME.WIDTH * 0.28, GAME.HEIGHT * 0.92, ASSETS.WARRIOR)
+      .setOrigin(0.5, 1).setDepth(10);
+    fitActor(warrior, 'warrior');
+    warrior.setScale(warrior.scaleX * 1.55);
 
-    this.dialogue = new DialogueManager(this);
-    this.hint = this.add.text(GAME.WIDTH / 2, GAME.HEIGHT * 0.93, '参见国王，等待宣旨……', {
-      fontFamily: UI.FONT,
-      fontSize: `${Math.round(GAME.HEIGHT * UI.SMALL_RATIO)}px`,
-      color: '#d8c8e8',
-    }).setOrigin(0.5).setDepth(50);
-
-    this.interactKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
-    this.dialogueStarted = false;
-
-    this.mobile = createMobileControls(this, {
-      attackLabel: '交互',
-      skillLabels: ['谈', '行', ''],
-      skillEnabled: [true, false, false],
-    });
-
-    this.cameras.main.fadeIn(TRANSITION.FADE_DURATION, 0, 0, 0);
-
-    registerTestHandler('pickDialogueChoice', (index) => this.dialogue.pickChoice(index));
-    registerTestHandler('advanceDialogue', () => this.dialogue.advance());
-    registerTestHandler('moveWarrior', (x, y) => {
-      this.warrior.sprite.setPosition(x, y);
-      this.warrior.sprite.body.setVelocity(0, 0);
-    });
-
-    this.time.delayedCall(500, () => {
-      if (!this.dialogueStarted) this.startDialogue();
-    });
-  }
-
-  startDialogue() {
-    if (this.dialogueStarted) return;
-    this.dialogueStarted = true;
-    gameState.setFlag('warriorIsToad');
-    this.dialogue.start(palaceDialogue);
-    this.hint.setText('阅读对话……');
-  }
-
-  onDialogueTrigger(trigger) {
-    if (trigger === 'departSwamp') {
-      eventBus.emit(Events.BOUNTY_ACCEPTED);
-      this.goToSwamp();
+    if (this.textures.exists(ASSETS.PRINCESS)) {
+      const portrait = this.add.image(GAME.WIDTH * 0.72, GAME.HEIGHT * 0.55, ASSETS.PRINCESS)
+        .setOrigin(0.5, 1).setAlpha(0.4).setDepth(5);
+      fitActor(portrait, 'princess');
+      portrait.setScale(portrait.scaleX * 1.2);
     }
+
+    this.dialog = new DialogBox(this);
+    registerTestHandler('advanceDialogue', () => this.dialog.forceAdvance());
+    registerTestHandler('pickDialogueChoice', (id) => this.dialog.forcePick(id));
+    this.runIntro();
   }
 
-  onDialogueComplete() {}
+  async runIntro() {
+    const choice = await this.dialog.show([
+      { speaker: '国王', text: '恶龙掳走了我的女儿！谁能救回公主，赏黄金千两、封爵位！' },
+      { speaker: '勇士', text: '陛下，我愿接此悬赏。我乃修炼五百年的金蟾转世，专克邪祟妖龙！' },
+      { speaker: '大臣', text: '金蟾转世？哼……满朝文武无人敢接，你一个小小游侠……' },
+      { speaker: '国王', text: '罢了！既然无人敢去，便由你一试。救出公主，悬赏全数奉上！' },
+      {
+        speaker: '旁白',
+        text: '勇士领命，将穿过绝望沼泽，前往恶龙城堡……',
+        choices: [{ label: '出发', id: 'depart' }],
+      },
+    ]);
 
-  goToSwamp() {
-    gameState.phase = 'swamp';
-    this.hint.setText('前往绝望沼泽 →');
-    this.cameras.main.fadeOut(TRANSITION.FADE_DURATION, 0, 0, 0);
-    this.time.delayedCall(TRANSITION.FADE_DURATION, () => {
-      this.scene.start('SwampScene');
-    });
+    if (choice === 'depart' || choice === null) {
+      this.cameras.main.fadeOut(400, 0, 0, 0);
+      this.time.delayedCall(420, () => this.scene.start('SwampScene'));
+    }
   }
 
   update() {
-    this.mobile.setEnabled(!gameState.dialogueActive);
-
-    if (gameState.dialogueActive) {
-      this.warrior.sprite.body.setVelocity(0, 0);
-      const btn = this.mobile.consumeButtons();
-      if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
-        this.dialogue.advance();
-      }
-      this.dialogue.pickFromMobileButtons(btn);
-      return;
-    }
-
-    const interact = Phaser.Input.Keyboard.JustDown(this.interactKey);
-    const btn = this.mobile.consumeButtons();
-    if ((interact || btn.attack || btn.skill1) && !this.dialogueStarted) {
-      this.startDialogue();
-    }
+    this.dialog?.update();
   }
 }

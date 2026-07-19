@@ -1,56 +1,49 @@
-export const Events = {
-  GAME_START: 'game:start',
-  GAME_OVER: 'game:over',
-  GAME_RESTART: 'game:restart',
-  CHAPTER_CHANGED: 'chapter:changed',
-  AFFECTION_CHANGED: 'affection:changed',
-  DIALOGUE_START: 'dialogue:start',
-  DIALOGUE_END: 'dialogue:end',
-  QTE_START: 'qte:start',
-  QTE_SUCCESS: 'qte:success',
-  QTE_FAIL: 'qte:fail',
-  DRAGON_DEFEATED: 'dragon:defeated',
-  KISS_REVEAL: 'story:kissReveal',
-  WARRIOR_DEFEATED: 'warrior:defeated',
-  STORY_COMPLETE: 'story:complete',
-  BOUNTY_ACCEPTED: 'story:bountyAccepted',
-};
-
 class EventBus {
   constructor() {
-    this.listeners = {};
+    this.listeners = new Map();
   }
 
-  on(event, callback) {
-    if (!this.listeners[event]) {
-      this.listeners[event] = [];
-    }
-    this.listeners[event].push(callback);
-    return this;
+  on(event, fn) {
+    if (!this.listeners.has(event)) this.listeners.set(event, new Set());
+    this.listeners.get(event).add(fn);
+    return () => this.off(event, fn);
   }
 
-  off(event, callback) {
-    if (!this.listeners[event]) return this;
-    this.listeners[event] = this.listeners[event].filter((cb) => cb !== callback);
-    return this;
+  off(event, fn) {
+    this.listeners.get(event)?.delete(fn);
   }
 
-  emit(event, data) {
-    if (!this.listeners[event]) return this;
-    this.listeners[event].forEach((callback) => {
-      try {
-        callback(data);
-      } catch (err) {
-        console.error(`EventBus error in ${event}:`, err);
-      }
+  emit(event, payload) {
+    this.listeners.get(event)?.forEach((fn) => {
+      try { fn(payload); } catch (e) { console.warn('[EventBus]', event, e); }
     });
-    return this;
   }
 
-  removeAll() {
-    this.listeners = {};
-    return this;
+  clear() {
+    this.listeners.clear();
   }
 }
+
+export const Events = {
+  AUDIO_INIT: 'audio:init',
+  MUSIC_PLAY: 'music:play',
+  MUSIC_STOP: 'music:stop',
+  AUDIO_TOGGLE_MUTE: 'audio:toggle_mute',
+  SFX: 'sfx:play',
+  SCENE_ENTER: 'scene:enter',
+  PLAYER_JUMP: 'player:jump',
+  PLAYER_ATTACK: 'player:attack',
+  PLAYER_SKILL: 'player:skill',
+  PLAYER_HURT: 'player:hurt',
+  PLAYER_HEAL: 'player:heal',
+  ITEM_PICKUP: 'item:pickup',
+  ITEM_USE: 'item:use',
+  HUD_REFRESH: 'hud:refresh',
+  DASH: 'player:dash',
+  HIT: 'combat:hit',
+  TRANSFORM: 'story:transform',
+  FIREBALL: 'combat:fireball',
+  STORY_COMPLETE: 'story:complete',
+};
 
 export const eventBus = new EventBus();

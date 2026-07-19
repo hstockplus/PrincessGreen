@@ -1,223 +1,181 @@
-import Phaser from 'phaser';
-import { GAME, MOBILE, UI, isTouchDevice } from '../core/Constants.js';
-import { UI_KEYS } from '../sprites/characters.js';
-
-const NOOP = {
-  getMovement: () => ({ left: false, right: false, up: false, down: false }),
-  consumeButtons: () => ({ attack: false, skill1: false, skill2: false, skill3: false }),
-  setEnabled: () => {},
-  setDialogueMode: () => {},
-  setLabels: () => {},
-  setSkillVisible: () => {},
-  destroy: () => {},
-};
+import { GAME, COLORS, FONT } from '../utils/constants.js';
+import { ASSETS } from '../art/AssetLoader.js';
 
 /**
- * 王者荣耀式移动端操控：左下虚拟摇杆 + 右下普攻/技能一二三
+ * 移动端：左摇杆（八向）+ 右按钮（攻/技/互动/轻功/药）
  */
-export function createMobileControls(scene, options = {}) {
-  if (!isTouchDevice()) return NOOP;
+export class MobileControls {
+  constructor(scene, {
+    showAttack = false,
+    showSkill = false,
+    showDash = false,
+    showInteract = true,
+  } = {}) {
+    this.scene = scene;
+    this.enabled = true;
+    this.vector = { x: 0, y: 0 };
+    this.attackPressed = false;
+    this.skillPressed = false;
+    this.interactPressed = false;
+    this.dashPressed = false;
+    this.usePressed = false;
+    this.forwardHeld = false;
 
-  const labels = {
-    attack: options.attackLabel ?? '普攻',
-    skills: options.skillLabels ?? ['一', '二', '三'],
-  };
-  const skillEnabled = [...(options.skillEnabled ?? [true, true, true])];
+    const depth = 1100;
+    const joyX = 120;
+    const joyY = GAME.HEIGHT - 120;
+    const btnX = GAME.WIDTH - 120;
+    const btnY = GAME.HEIGHT - 120;
 
-  const m = MOBILE;
-  const c = m.COLORS;
+    this.base = scene.add.circle(joyX, joyY, 70, 0xffffff, 0.15)
+      .setStrokeStyle(3, COLORS.GOLD, 0.5)
+      .setScrollFactor(0)
+      .setDepth(depth)
+      .setInteractive();
+    this.thumb = scene.add.circle(joyX, joyY, 32, COLORS.GOLD, 0.55)
+      .setScrollFactor(0)
+      .setDepth(depth + 1);
+    this.joyOrigin = { x: joyX, y: joyY };
+    this.maxDrag = 52;
+    this.pointerId = null;
 
-  const joyCx = m.MARGIN_X + m.JOY_BASE;
-  const joyCy = GAME.HEIGHT - m.MARGIN_BOTTOM - m.JOY_BASE;
-  const attackX = GAME.WIDTH - m.MARGIN_X - m.ATTACK_SIZE * 0.5;
-  const attackY = GAME.HEIGHT - m.MARGIN_BOTTOM - m.ATTACK_SIZE * 0.5;
-
-  const skillOffsets = [
-    { x: -m.ATTACK_SIZE * 0.95, y: -m.SKILL_SIZE * 0.35 },
-    { x: -m.ATTACK_SIZE * 0.55, y: -m.ATTACK_SIZE * 0.95 },
-    { x: -m.ATTACK_SIZE * 1.45, y: -m.SKILL_SIZE * 0.85 },
-  ];
-
-  let enabled = true;
-  let joyActive = false;
-  let joyPointerId = null;
-  let joyVec = { x: 0, y: 0 };
-  const pending = { attack: false, skill1: false, skill2: false, skill3: false };
-
-  const root = scene.add.container(0, 0).setDepth(m.DEPTH).setScrollFactor(0);
-
-  function updateJoystick(pointer) {
-    const dx = pointer.x - joyCx;
-    const dy = pointer.y - joyCy;
-    const dist = Math.hypot(dx, dy);
-    const max = m.JOY_MAX_DRAG;
-    const clamped = dist > max ? max / dist : 1;
-    const tx = dx * clamped;
-    const ty = dy * clamped;
-    joyThumb.setPosition(joyCx + tx, joyCy + ty);
-    const innerDead = m.JOY_INNER_DEAD ?? 12;
-    joyVec = dist < innerDead ? { x: 0, y: 0 } : { x: tx / max, y: ty / max };
-  }
-
-  function releaseJoystick(pointer) {
-    if (pointer.id !== joyPointerId) return;
-    joyActive = false;
-    joyPointerId = null;
-    joyVec = { x: 0, y: 0 };
-    joyThumb.setPosition(joyCx, joyCy);
-  }
-
-  const joyBase = scene.textures.exists(UI_KEYS.JOYSTICK)
-    ? scene.add.image(joyCx, joyCy, UI_KEYS.JOYSTICK).setDisplaySize(m.JOY_BASE * 2, m.JOY_BASE * 2).setAlpha(m.ALPHA.base)
-    : scene.add.circle(joyCx, joyCy, m.JOY_BASE, c.joyBase, m.ALPHA.base).setStrokeStyle(3, c.stroke, 0.45);
-  const joyThumb = scene.add.circle(joyCx, joyCy, m.JOY_THUMB, c.joyThumb, m.ALPHA.thumb)
-    .setStrokeStyle(2, c.stroke, 0.65);
-  const joyZone = scene.add.circle(joyCx, joyCy, m.JOY_BASE + 8, 0x000000, 0.001).setInteractive();
-  joyZone.on('pointerdown', (pointer) => {
-    if (!enabled) return;
-    joyActive = true;
-    joyPointerId = pointer.id;
-    updateJoystick(pointer);
-  });
-
-  const onMove = (pointer) => {
-    if (!joyActive || pointer.id !== joyPointerId) return;
-    updateJoystick(pointer);
-  };
-  const onUp = (pointer) => releaseJoystick(pointer);
-  scene.input.on('pointermove', onMove);
-  scene.input.on('pointerup', onUp);
-  scene.input.on('pointerupoutside', onUp);
-  scene.events.once('shutdown', () => {
-    scene.input.off('pointermove', onMove);
-    scene.input.off('pointerup', onUp);
-    scene.input.off('pointerupoutside', onUp);
-  });
-
-  function makeButton(x, y, radius, fill, label, onPress) {
-    const useTex = scene.textures.exists(UI_KEYS.SKILL_BTN);
-    const g = useTex
-      ? scene.add.image(x, y, UI_KEYS.SKILL_BTN).setDisplaySize(radius * 2, radius * 2).setAlpha(m.ALPHA.btn).setInteractive()
-      : scene.add.circle(x, y, radius, fill, m.ALPHA.btn).setStrokeStyle(3, c.stroke, 0.75).setInteractive();
-    const t = scene.add.text(x, y, label, {
-      fontFamily: UI.FONT,
-      fontSize: `${Math.round(radius * 0.72)}px`,
-      color: c.label,
-      stroke: '#301010',
-      strokeThickness: 2,
-    }).setOrigin(0.5);
-
-    g.on('pointerdown', () => {
-      if (!enabled) return;
-      if (!useTex) g.setFillStyle(fill, m.ALPHA.btnPress);
-      g.setScale(0.92);
-      onPress();
+    this.base.on('pointerdown', (p) => {
+      if (!this.enabled) return;
+      this.pointerId = p.id;
+      this._moveThumb(p.x, p.y);
     });
-    g.on('pointerup', () => { if (!useTex) g.setFillStyle(fill, m.ALPHA.btn); g.setScale(1); });
-    g.on('pointerout', () => { if (!useTex) g.setFillStyle(fill, m.ALPHA.btn); g.setScale(1); });
-
-    root.add([g, t]);
-    return { g, t };
-  }
-
-  const attackBtn = makeButton(
-    attackX, attackY, m.ATTACK_SIZE * 0.5, c.attack, labels.attack,
-    () => { pending.attack = true; },
-  );
-
-  const skillBtns = [];
-  skillOffsets.forEach((off, i) => {
-    const key = `skill${i + 1}`;
-    const btn = makeButton(
-      attackX + off.x, attackY + off.y, m.SKILL_SIZE * 0.5, c.skill, labels.skills[i],
-      () => { pending[key] = true; },
-    );
-    skillBtns.push(btn);
-  });
-
-  function applySkillVisibility() {
-    skillBtns.forEach((btn, i) => {
-      const vis = skillEnabled[i];
-      btn.g.setVisible(vis);
-      btn.t.setVisible(vis);
-      if (vis) btn.g.setInteractive();
-      else btn.g.disableInteractive();
+    scene.input.on('pointermove', (p) => {
+      if (!this.enabled || this.pointerId !== p.id) return;
+      this._moveThumb(p.x, p.y);
     });
+    const endJoy = (p) => {
+      if (this.pointerId !== p.id) return;
+      this.pointerId = null;
+      this.thumb.setPosition(this.joyOrigin.x, this.joyOrigin.y);
+      this.vector = { x: 0, y: 0 };
+    };
+    scene.input.on('pointerup', endJoy);
+    scene.input.on('pointerupoutside', endJoy);
+
+    this.btns = [];
+    const mkBtn = (x, y, r, label, color, onDown) => {
+      const c = scene.add.circle(x, y, r, color, 0.72)
+        .setStrokeStyle(3, COLORS.GOLD, 0.7)
+        .setScrollFactor(0)
+        .setDepth(depth)
+        .setInteractive();
+      const t = scene.add.text(x, y, label, {
+        fontFamily: FONT.FAMILY,
+        fontSize: '18px',
+        color: COLORS.UI_TEXT,
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(depth + 1);
+      c.on('pointerdown', () => {
+        if (!this.enabled) return;
+        c.setAlpha(1);
+        onDown();
+      });
+      c.on('pointerup', () => c.setAlpha(0.72));
+      c.on('pointerout', () => c.setAlpha(0.72));
+      this.btns.push(c, t);
+      return c;
+    };
+
+    if (showAttack) {
+      mkBtn(btnX, btnY, 48, '攻', COLORS.BLOOD, () => { this.attackPressed = true; });
+    }
+    if (showSkill) {
+      mkBtn(btnX - 20, btnY - 100, 42, '刀气', 0x8a7020, () => { this.skillPressed = true; });
+    }
+    if (showInteract) {
+      mkBtn(btnX - (showAttack ? 100 : 0), btnY - (showAttack ? 10 : 0), 40, '互动', 0x2d6a4f, () => {
+        this.interactPressed = true;
+      });
+    }
+    if (showDash) {
+      if (scene.textures.exists(ASSETS.SKILL_DASH)) {
+        const icon = scene.add.image(btnX - 110, btnY - 90, ASSETS.SKILL_DASH)
+          .setDisplaySize(72, 72)
+          .setScrollFactor(0)
+          .setDepth(depth)
+          .setInteractive({ useHandCursor: true });
+        icon.on('pointerdown', () => { if (this.enabled) this.dashPressed = true; });
+        this.btns.push(icon);
+      } else {
+        mkBtn(btnX - 110, btnY - 90, 40, '轻功', 0x8a6020, () => { this.dashPressed = true; });
+      }
+      // 「前进」按住向右跑，松开停止强制右移倾向由场景处理
+      if (!showAttack) {
+        const runBtn = mkBtn(btnX, btnY, 48, '前进', 0x2868b0, () => { this.forwardHeld = true; });
+        runBtn.on('pointerup', () => { this.forwardHeld = false; });
+        runBtn.on('pointerout', () => { this.forwardHeld = false; });
+        runBtn.on('pointerupoutside', () => { this.forwardHeld = false; });
+      }
+    }
+    mkBtn(btnX + 10, btnY - 175, 34, '药', 0x4a2060, () => { this.usePressed = true; });
+
+    this.root = [this.base, this.thumb, ...this.btns];
   }
-  applySkillVisibility();
 
-  root.add([joyBase, joyThumb, joyZone]);
+  _moveThumb(x, y) {
+    const dx = x - this.joyOrigin.x;
+    const dy = y - this.joyOrigin.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const clamped = Math.min(len, this.maxDrag);
+    const nx = (dx / len) * clamped;
+    const ny = (dy / len) * clamped;
+    this.thumb.setPosition(this.joyOrigin.x + nx, this.joyOrigin.y + ny);
+    const dead = 0.28;
+    const vx = nx / this.maxDrag;
+    const vy = ny / this.maxDrag;
+    this.vector = {
+      x: Math.abs(vx) < dead ? 0 : vx,
+      y: Math.abs(vy) < dead ? 0 : vy,
+    };
+  }
 
-  function setInteractives(active) {
-    if (active) {
-      joyZone.setInteractive();
-      attackBtn.g.setInteractive();
-      applySkillVisibility();
-    } else {
-      joyZone.disableInteractive();
-      attackBtn.g.disableInteractive();
-      skillBtns.forEach((btn) => btn.g.disableInteractive());
+  setVisible(v) {
+    this.root.forEach((o) => o.setVisible(v));
+  }
+
+  setEnabled(v) {
+    this.enabled = v;
+    this.setVisible(v);
+    if (!v) {
+      this.vector = { x: 0, y: 0 };
+      this.pointerId = null;
+      this.thumb.setPosition(this.joyOrigin.x, this.joyOrigin.y);
     }
   }
 
-  return {
-    getMovement() {
-      if (!enabled) return { left: false, right: false, up: false, down: false };
-      const { x, y } = joyVec;
-      const dz = m.DEAD_ZONE;
-      return {
-        left: x < -dz,
-        right: x > dz,
-        up: y < -dz,
-        down: y > dz,
-      };
-    },
+  /** 每帧读取后清除一次性按键 */
+  consume() {
+    const out = {
+      left: this.vector.x < -0.28,
+      right: this.vector.x > 0.28 || this.forwardHeld,
+      up: this.vector.y < -0.28,
+      down: this.vector.y > 0.28,
+      forward: this.forwardHeld,
+      attack: this.attackPressed,
+      skill: this.skillPressed,
+      interact: this.interactPressed,
+      dash: this.dashPressed,
+      use: this.usePressed,
+    };
+    this.attackPressed = false;
+    this.skillPressed = false;
+    this.interactPressed = false;
+    this.dashPressed = false;
+    this.usePressed = false;
+    return out;
+  }
 
-    consumeButtons() {
-      const out = { ...pending };
-      pending.attack = false;
-      pending.skill1 = false;
-      pending.skill2 = false;
-      pending.skill3 = false;
-      return out;
-    },
+  destroy() {
+    this.root.forEach((o) => o.destroy());
+  }
+}
 
-    setEnabled(value) {
-      enabled = value;
-      root.setAlpha(value ? 1 : 0.35);
-      setInteractives(value);
-    },
-
-    /** 对话中隐藏并禁用触控层，避免挡住选项 */
-    setDialogueMode(inDialogue) {
-      if (inDialogue) {
-        enabled = false;
-        root.setVisible(false);
-        setInteractives(false);
-      } else {
-        root.setVisible(true);
-        enabled = true;
-        root.setAlpha(1);
-        setInteractives(true);
-      }
-    },
-
-    setLabels({ attack, skills } = {}) {
-      if (attack) attackBtn.t.setText(attack);
-      if (skills) {
-        skills.forEach((text, i) => {
-          if (skillBtns[i] && text) skillBtns[i].t.setText(text);
-        });
-      }
-    },
-
-    setSkillVisible(flags) {
-      flags.forEach((vis, i) => { skillEnabled[i] = vis; });
-      applySkillVisibility();
-    },
-
-    destroy() {
-      root.destroy();
-    },
-  };
+export function isTouchDevice() {
+  if (typeof window === 'undefined') return false;
+  if (new URLSearchParams(window.location.search).has('touch')) return true;
+  return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 }

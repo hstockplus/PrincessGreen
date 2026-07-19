@@ -1,25 +1,9 @@
-import { gameState } from '../core/GameState.js';
+import { gameState } from '../utils/gameState.js';
 
-const handlers = {
-  pickDialogueChoice: null,
-  advanceDialogue: null,
-  forceBattleWin: null,
-  forceBattleLose: null,
-  forceEscape: null,
-  exitToCastle: null,
-  moveWarrior: null,
-};
+const handlers = {};
 
 export function registerTestHandler(name, fn) {
   handlers[name] = fn;
-}
-
-export function getDialogueChoiceY(game, index = 0) {
-  const scene = game?.scene?.getScenes(true)?.[0];
-  const dialogue = scene?.dialogue;
-  if (!dialogue?.choiceItems?.length) return 0;
-  const hit = dialogue.choiceItems[index * 2];
-  return hit?.y ?? 0;
 }
 
 export function getTestHandlers() {
@@ -27,32 +11,19 @@ export function getTestHandlers() {
 }
 
 export function getGameSnapshot(game) {
-  const activeScenes = game?.scene?.getScenes(true) ?? [];
-  const scene = activeScenes[0];
-
+  const scenes = game?.scene?.getScenes?.(true) || [];
+  const active = scenes[0];
+  const key = active?.sys?.settings?.key || active?.scene?.key || null;
   return {
-    coords: 'origin:top-left x:right y:down',
-    phase: gameState.phase,
-    chapter: gameState.chapter,
-    affection: gameState.affection,
-    flags: { ...gameState.flags },
-    dragonDefeated: gameState.dragonDefeated,
-    warriorDefeated: gameState.warriorDefeated,
-    warriorEscaped: gameState.warriorEscaped,
-    storyComplete: gameState.storyComplete,
-    dialogueActive: gameState.dialogueActive,
-    qteActive: gameState.qteActive,
-    started: gameState.started,
-    scene: scene?.scene?.key ?? null,
-    scenes: activeScenes.map((s) => s.scene.key),
-    player: scene?.warrior
-      ? { x: Math.round(scene.warrior.x), y: Math.round(scene.warrior.y) }
-      : scene?.player
-        ? { x: Math.round(scene.player.x), y: Math.round(scene.player.y) }
-        : null,
-    qte: null,
-    battle: scene?.battle
-      ? { warriorHp: scene.battle.warriorHp, dragonHp: scene.battle.dragonHp, active: scene.battle.active }
-      : null,
+    scene: key,
+    phase: gameState.phase || null,
+    hp: gameState.hp,
+    mp: gameState.mp,
+    lingzhi: gameState.lingzhi,
+    tookFrog: gameState.tookFrog,
+    branch: gameState.branch,
+    dialogueActive: !!active?.dialog?.active,
+    battleActive: active?.state === 'battle',
+    storyComplete: !!gameState.storyComplete,
   };
 }
