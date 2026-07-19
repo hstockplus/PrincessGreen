@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
-import { GAME, COLORS, FONT, ITEM, BUG } from '../utils/constants.js';
+import { GAME, COLORS, FONT, ITEM } from '../utils/constants.js';
 import { DialogBox } from '../ui/DialogBox.js';
 import { HUD } from '../ui/HUD.js';
 import { Warrior } from '../entities/Warrior.js';
-import { SwampBug } from '../entities/SwampBug.js';
+import { createSwampEnemy } from '../entities/enemies/SwampEnemies.js';
 import { gameState } from '../utils/gameState.js';
 import { sound } from '../utils/sound.js';
 import { eventBus, Events } from '../core/EventBus.js';
@@ -30,7 +30,7 @@ export class SwampScene extends Phaser.Scene {
     this.parallax = new ParallaxBackground(this, ASSETS.BG_SWAMP, worldW, { overlay: 0.2 });
     this.createLingzhi();
     this.createFrog();
-    this.createBugs();
+    this.createEnemies();
 
     const walkY = GAME.HEIGHT * 0.72;
     this.warrior = new Warrior(this, 140, walkY);
@@ -39,8 +39,8 @@ export class SwampScene extends Phaser.Scene {
     this.hud = new HUD(this);
     this.hud.setQuest('前往地图东侧恶龙城堡');
     this.hud.setHint(isTouchDevice()
-      ? '摇杆八向移动 · 互动采集/对话 · 攻/刀气练手'
-      : 'WASD 八向移动 · J 攻击 · K 刀气 · E 采集/对话');
+      ? '摇杆移动 · 攻/刀气 · 小心不同小怪的攻击'
+      : 'WASD 移动 · J 攻 · K 刀气 · 毒虫贴身 / 沼蛊吐息 / 蛮鳄冲锋 / 石蟹砸地');
     this.dialog = new DialogBox(this);
     this.mobile = new MobileControls(this, {
       showInteract: true,
@@ -49,13 +49,19 @@ export class SwampScene extends Phaser.Scene {
     });
     this.talkedFrog = false;
     this.leaving = false;
-    this.bugHitCd = new Map();
 
     this.add.text(GAME.WIDTH / 2, 36, '第二幕 · 绝望沼泽', {
       fontFamily: FONT.FAMILY,
       fontSize: '24px',
       color: COLORS.GOLD_LIGHT,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(800);
+
+    // 图例
+    this.add.text(24, GAME.HEIGHT - 52, '毒虫·贴身  沼蛊·吐息  蛮鳄·冲锋  石蟹·砸地', {
+      fontFamily: FONT.FAMILY,
+      fontSize: '13px',
+      color: COLORS.UI_MUTED,
+    }).setScrollFactor(0).setDepth(800);
 
     registerTestHandler('advanceDialogue', () => this.dialog.forceAdvance());
     registerTestHandler('pickDialogueChoice', (id) => this.dialog.forcePick(id));
@@ -128,13 +134,23 @@ export class SwampScene extends Phaser.Scene {
     });
   }
 
-  createBugs() {
-    this.bugs = [];
+  createEnemies() {
+    this.enemies = [];
+    // 沿途混合布置四种小怪
     const spots = [
-      [900, 0.65], [1400, 0.78], [1900, 0.6], [2300, 0.72],
+      ['bug', 880, 0.66],
+      ['spitter', 1100, 0.58],
+      ['bug', 1350, 0.76],
+      ['charger', 1580, 0.68],
+      ['slammer', 1850, 0.72],
+      ['spitter', 2050, 0.55],
+      ['charger', 2280, 0.7],
+      ['slammer', 2480, 0.64],
+      ['bug', 2650, 0.78],
+      ['spitter', 2800, 0.6],
     ];
-    spots.forEach(([x, yR]) => {
-      this.bugs.push(new SwampBug(this, x, GAME.HEIGHT * yR));
+    spots.forEach(([type, x, yR]) => {
+      this.enemies.push(createSwampEnemy(this, type, x, GAME.HEIGHT * yR));
     });
   }
 
@@ -180,43 +196,54 @@ export class SwampScene extends Phaser.Scene {
   resolveCombat() {
     const box = this.warrior.attackBox;
     if (box?.rect?.active) {
-      this.bugs.forEach((bug, i) => {
-        if (!bug.alive) return;
+      this.enemies.forEach((enemy, i) => {
+        if (!enemy.alive) return;
         if (box.hitSet.has(i)) return;
-        if (this.physics.overlap(box.rect, bug.sprite)) {
+        if (this.physics.overlap(box.rect, enemy.sprite)) {
           box.hitSet.add(i);
-          bug.takeDamage(box.damage);
+          enemy.takeDamage(box.damage);
           eventBus.emit(Events.HIT);
-          CombatFX.hitSpark(this, bug.sprite.x, bug.sprite.y - 20);
+          CombatFX.hitSpark(this, enemy.sprite.x, enemy.sprite.y - 20);
         }
       });
     }
 
     this.warrior.projectiles.forEach((qi) => {
       if (!qi.active) return;
-      this.bugs.forEach((bug, i) => {
-        if (!bug.alive) return;
-        const id = `bug-${i}`;
+      this.enemies.forEach((enemy, i) => {
+        if (!enemy.alive) return;
+        const id = `e-${i}`;
         if (!qi.canHit(id)) return;
-        if (this.physics.overlap(qi.body, bug.sprite)) {
+        if (this.physics.overlap(qi.body, enemy.sprite)) {
           qi.markHit(id);
-          bug.takeDamage(qi.damage);
+          enemy.takeDamage(qi.damage);
           eventBus.emit(Events.HIT);
-          CombatFX.hitSpark(this, bug.sprite.x, bug.sprite.y - 20);
+          CombatFX.hitSpark(this, enemy.sprite.x, enemy.sprite.y - 20);
         }
       });
     });
 
-    const now = this.time.now;
-    this.bugs.forEach((bug, i) => {
-      if (!bug.alive) return;
-      if (this.physics.overlap(this.warrior.sprite, bug.sprite)) {
-        const last = this.bugHitCd.get(i) || 0;
-        if (now - last >= BUG.ATTACK_CD) {
-          this.bugHitCd.set(i, now);
-          this.warrior.takeDamage(BUG.DAMAGE);
+    // 各小怪特殊攻击判定
+    this.enemies.forEach((enemy) => {
+      if (!enemy.alive) return;
+
+      // 冲锋 / 砸地 hitbox
+      const hb = enemy.getAttackHitbox?.();
+      if (hb?.active && this.physics.overlap(this.warrior.sprite, hb)) {
+        if (this.warrior.takeDamage(enemy.cfg.DAMAGE)) {
+          this.hud.refresh();
         }
       }
+
+      // 沼蛊毒液弹
+      enemy.getProjectiles?.().forEach((shot) => {
+        if (!shot.active) return;
+        if (this.physics.overlap(this.warrior.sprite, shot)) {
+          const dmg = shot.getData('damage') || enemy.cfg.DAMAGE;
+          shot.destroy();
+          if (this.warrior.takeDamage(dmg)) this.hud.refresh();
+        }
+      });
     });
   }
 
@@ -228,7 +255,17 @@ export class SwampScene extends Phaser.Scene {
     this.warrior.update(delta, this.dialog.active);
     this.hud.refresh();
 
-    this.bugs.forEach((b) => b.update(_time, delta, this.warrior.x, this.warrior.y));
+    // 同步冲锋 hitbox 位置
+    this.enemies.forEach((e) => {
+      const dmgReq = e.update(_time, delta, this.warrior.x, this.warrior.y);
+      if (dmgReq && !this.dialog.active) {
+        if (this.warrior.takeDamage(dmgReq.damage)) this.hud.refresh();
+      }
+      if (e.state === 'charging' && e.hitbox?.active && e.sprite?.active) {
+        e.hitbox.x = e.sprite.x;
+        e.hitbox.y = e.sprite.y;
+      }
+    });
 
     if (this.dialog.active) return;
 

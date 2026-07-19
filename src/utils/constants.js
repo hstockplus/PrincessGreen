@@ -62,6 +62,63 @@ export const BUG = {
   ATTACK_CD: 1200,
 };
 
+/** 沼泽小怪种类 — 攻击方式各不相同 */
+export const ENEMIES = {
+  bug: {
+    NAME: '沼泽毒虫',
+    TEXTURE: 'enemy_bug',
+    TINT: 0xffffff,
+    BAR: 0xaa3333,
+    HP: 28,
+    SPEED: 95,
+    DAMAGE: 8,
+    ATTACK_CD: 1100,
+    AGGRO: 230,
+    HEIGHT: 34,
+  },
+  spitter: {
+    NAME: '沼蛊',
+    TEXTURE: 'enemy_spitter',
+    TINT: 0xe8c0ff,
+    BAR: 0x8844aa,
+    HP: 24,
+    SPEED: 80,
+    DAMAGE: 10,
+    ATTACK_CD: 1600,
+    AGGRO: 320,
+    KEEP_MIN: 140,
+    KEEP_MAX: 240,
+    SHOT_SPEED: 260,
+    HEIGHT: 38,
+  },
+  charger: {
+    NAME: '蛮鳄',
+    TEXTURE: 'enemy_charger',
+    TINT: 0xffddaa,
+    BAR: 0xcc6622,
+    HP: 40,
+    SPEED: 70,
+    DAMAGE: 14,
+    ATTACK_CD: 2400,
+    AGGRO: 280,
+    CHARGE_SPEED: 380,
+    HEIGHT: 42,
+  },
+  slammer: {
+    NAME: '石蟹',
+    TEXTURE: 'enemy_slammer',
+    TINT: 0xc8c8d8,
+    BAR: 0x6688aa,
+    HP: 50,
+    SPEED: 55,
+    DAMAGE: 16,
+    ATTACK_CD: 2200,
+    AGGRO: 200,
+    SLAM_RANGE: 70,
+    HEIGHT: 44,
+  },
+};
+
 export const DRAGON = {
   HP: 180,
   MAX_HP: 180,
