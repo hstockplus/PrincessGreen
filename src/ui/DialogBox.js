@@ -74,6 +74,7 @@ export class DialogBox {
   }
 
   showChoices(choices) {
+    this._lastChoices = choices;
     const startY = GAME.HEIGHT - 210;
     choices.forEach((c, i) => {
       const x = GAME.WIDTH / 2 + (i - (choices.length - 1) / 2) * 280;
@@ -113,6 +114,24 @@ export class DialogBox {
     this.active = false;
     this.container.setVisible(false);
     this.clearChoices();
+  }
+
+  /** 测试用：强制推进一句 */
+  forceAdvance() {
+    if (!this.active) return;
+    if (this.choiceBtns.length) return;
+    this.next();
+  }
+
+  /** 测试用：按选项 id 或 index 选择 */
+  forcePick(idOrIndex) {
+    if (!this.active) return;
+    const choices = this._lastChoices || [];
+    let id = idOrIndex;
+    if (typeof idOrIndex === 'number') id = choices[idOrIndex]?.id;
+    if (!id && choices[0]) id = choices[0].id;
+    this.hide();
+    this.onComplete?.(id ?? null);
   }
 
   destroy() {

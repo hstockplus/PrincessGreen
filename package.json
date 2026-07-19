@@ -6,13 +6,17 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "simulate": "node scripts/simulate-flow.mjs",
+    "test:flow": "node scripts/simulate-flow.mjs",
     "deploy": "npm run build && bash \"$HOME/.agents/skills/here-now/scripts/publish.sh\" dist/ --title \"青蛙公主\" --description \"暗黑水墨横版动作RPG\" --spa --client cursor"
   },
   "dependencies": {
     "phaser": "^3.87.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "gh-pages": "^6.3.0",
+    "playwright": "^1.61.1",
     "vite": "^7.3.1"
   }
 }

@@ -1,6 +1,9 @@
 import Phaser from 'phaser';
 import { GAME, COLORS, FONT } from '../utils/constants.js';
 import { sound } from '../utils/sound.js';
+import { gameState } from '../utils/gameState.js';
+import { eventBus, Events } from '../core/EventBus.js';
+import { registerTestHandler } from '../testing/TestAPI.js';
 
 export class EndingScene extends Phaser.Scene {
   constructor() {
@@ -8,7 +11,9 @@ export class EndingScene extends Phaser.Scene {
   }
 
   create() {
+    gameState.phase = 'ending';
     sound.playBgm('ending');
+    this.cameras.main.fadeIn(500, 0, 0, 0);
     this.drawSunset();
 
     this.add.text(GAME.WIDTH / 2, 48, '第五幕 · 回归原形', {
@@ -17,12 +22,8 @@ export class EndingScene extends Phaser.Scene {
       color: COLORS.GOLD_LIGHT,
     }).setOrigin(0.5);
 
-    // 替换为精灵图资源 — 小金蟾
-    const toad = this.add.circle(GAME.WIDTH * 0.35, GAME.HEIGHT * 0.62, 14, 0xffd700);
-    this.add.circle(GAME.WIDTH * 0.35 - 6, GAME.HEIGHT * 0.62 - 6, 4, 0x222222);
-    this.add.circle(GAME.WIDTH * 0.35 + 6, GAME.HEIGHT * 0.62 - 6, 4, 0x222222);
+    const toad = this.add.image(GAME.WIDTH * 0.35, GAME.HEIGHT * 0.62, 'tex_toad').setScale(2);
 
-    // footprints
     const g = this.add.graphics();
     g.fillStyle(0x3a2a10, 0.5);
     for (let i = 0; i < 6; i++) {
@@ -46,15 +47,20 @@ export class EndingScene extends Phaser.Scene {
     });
 
     this.time.delayedCall(2800, () => {
-      this.add.text(GAME.WIDTH / 2, GAME.HEIGHT * 0.42, '她从未原谅他。', {
+      const line = this.add.text(GAME.WIDTH / 2, GAME.HEIGHT * 0.42, '她从未原谅他。', {
         fontFamily: FONT.FAMILY,
         fontSize: '40px',
         color: COLORS.UI_TEXT,
-      }).setOrigin(0.5).setAlpha(0).setDepth(10)
-        .setStroke(COLORS.BG_DARK, 4);
-
-      const line = this.children.list[this.children.list.length - 1];
+        stroke: '#1a1008',
+        strokeThickness: 4,
+      }).setOrigin(0.5).setAlpha(0).setDepth(10);
       this.tweens.add({ targets: line, alpha: 1, duration: 1200 });
+      gameState.storyComplete = true;
+      eventBus.emit(Events.STORY_COMPLETE);
+    });
+
+    registerTestHandler('forceEscape', () => {
+      gameState.storyComplete = true;
     });
 
     this.time.delayedCall(5500, () => {
@@ -90,7 +96,6 @@ export class EndingScene extends Phaser.Scene {
     g.fillStyle(0x1a2818, 0.85);
     g.fillEllipse(GAME.WIDTH * 0.3, GAME.HEIGHT * 0.78, 500, 120);
     g.fillEllipse(GAME.WIDTH * 0.7, GAME.HEIGHT * 0.82, 600, 100);
-    // reeds
     g.lineStyle(3, 0x2a3a20, 0.8);
     for (let i = 0; i < 40; i++) {
       const x = 40 + i * 30;

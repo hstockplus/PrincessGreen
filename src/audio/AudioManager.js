@@ -4,6 +4,7 @@ class AudioManager {
     this.master = null;
     this.currentBgm = null;
     this.unlocked = false;
+    this.muted = false;
   }
 
   init() {
@@ -12,7 +13,7 @@ class AudioManager {
     if (!AC) return;
     this.ctx = new AC();
     this.master = this.ctx.createGain();
-    this.master.gain.value = 0.7;
+    this.master.gain.value = this.muted ? 0 : 0.7;
     this.master.connect(this.ctx.destination);
   }
 
@@ -50,6 +51,16 @@ class AudioManager {
       try { this.currentBgm.stop(); } catch { /* ignore */ }
       this.currentBgm = null;
     }
+  }
+
+  setMuted(muted) {
+    this.muted = muted;
+    if (this.master) this.master.gain.value = muted ? 0 : 0.7;
+  }
+
+  toggleMute() {
+    this.setMuted(!this.muted);
+    return this.muted;
   }
 }
 

@@ -10,6 +10,8 @@ class GameState {
     this.tookFrog = false;
     this.choseFightDragon = null;
     this.branch = null; // 'win' | 'lose' | 'question'
+    this.phase = 'boot';
+    this.storyComplete = false;
   }
 }
 

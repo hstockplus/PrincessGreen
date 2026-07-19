@@ -5,6 +5,8 @@ import { HUD } from '../ui/HUD.js';
 import { WarriorController } from '../utils/WarriorController.js';
 import { gameState } from '../utils/gameState.js';
 import { sound } from '../utils/sound.js';
+import { eventBus, Events } from '../core/EventBus.js';
+import { registerTestHandler } from '../testing/TestAPI.js';
 
 export class SwampScene extends Phaser.Scene {
   constructor() {
@@ -12,8 +14,10 @@ export class SwampScene extends Phaser.Scene {
   }
 
   create() {
+    gameState.phase = 'swamp';
     sound.playBgm('swamp');
     this.cameras.main.fadeIn(400, 0, 0, 0);
+    this.cameras.main.flash(200, 20, 40, 20);
     this.physics.world.setBounds(0, 0, GAME.WIDTH * 2.2, GAME.HEIGHT);
     this.cameras.main.setBounds(0, 0, GAME.WIDTH * 2.2, GAME.HEIGHT);
 
@@ -37,6 +41,21 @@ export class SwampScene extends Phaser.Scene {
       fontSize: '24px',
       color: COLORS.GOLD_LIGHT,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(800);
+
+    registerTestHandler('advanceDialogue', () => this.dialog.forceAdvance());
+    registerTestHandler('pickDialogueChoice', (id) => this.dialog.forcePick(id));
+    registerTestHandler('moveWarrior', (x, y) => {
+      this.warrior.sprite.setPosition(x, y);
+      this.warrior.sprite.body.setVelocity(0, 0);
+    });
+    registerTestHandler('exitToCastle', () => this.goToCastle());
+  }
+
+  goToCastle() {
+    if (this.leaving) return;
+    this.leaving = true;
+    this.cameras.main.fadeOut(400, 0, 0, 0);
+    this.time.delayedCall(420, () => this.scene.start('CastleScene'));
   }
 
   drawSwamp() {
@@ -86,15 +105,29 @@ export class SwampScene extends Phaser.Scene {
     this.lingzhiGroup = this.physics.add.staticGroup();
     const spots = [350, 680, 980, 1400, 1750, 2100];
     spots.forEach((x) => {
-      // 替换为精灵图资源
       const item = this.lingzhiGroup.create(x, GAME.HEIGHT - 90, 'tex_lingzhi');
       item.setData('taken', false);
+      this.tweens.add({
+        targets: item,
+        y: item.y - 8,
+        duration: 700 + Phaser.Math.Between(0, 200),
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
     });
   }
 
   createFrog() {
-    // 替换为精灵图资源
     this.frog = this.physics.add.staticImage(520, GAME.HEIGHT - 88, 'tex_frog').setScale(1.6);
+    this.tweens.add({
+      targets: this.frog,
+      y: this.frog.y - 6,
+      duration: 900,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
   }
 
   async talkFrog() {
@@ -127,7 +160,7 @@ export class SwampScene extends Phaser.Scene {
         item.setData('taken', true);
         item.setVisible(false);
         gameState.lingzhi += 1;
-        sound.play('pickup');
+        eventBus.emit(Events.ITEM_PICKUP);
         this.hud.refresh();
       }
     });
@@ -147,9 +180,7 @@ export class SwampScene extends Phaser.Scene {
     }
 
     if (!this.leaving && this.warrior.x > GAME.WIDTH * 2.05) {
-      this.leaving = true;
-      this.cameras.main.fadeOut(400, 0, 0, 0);
-      this.time.delayedCall(420, () => this.scene.start('CastleScene'));
+      this.goToCastle();
     }
   }
 }

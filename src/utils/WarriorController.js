@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { PLAYER, ITEM } from './constants.js';
 import { gameState } from './gameState.js';
-import { sound } from './sound.js';
+import { eventBus, Events } from '../core/EventBus.js';
 
 /**
  * 勇士移动 / 二段跳 / 攻击 / 灵芝
@@ -19,7 +19,19 @@ export class WarriorController {
     this.sprite = scene.physics.add.sprite(x, y, 'tex_warrior');
     this.sprite.setCollideWorldBounds(true);
     this.sprite.setBounce(0);
-    this.sprite.body.setSize(PLAYER.WIDTH * 0.7, PLAYER.HEIGHT * 0.9);
+    this.sprite.body.setSize(PLAYER.WIDTH * 0.55, PLAYER.HEIGHT * 0.85);
+
+    // slam-in entrance (design-game juice)
+    this.sprite.setAlpha(0);
+    this.sprite.y -= 80;
+    scene.tweens.add({
+      targets: this.sprite,
+      y: y,
+      alpha: 1,
+      duration: 450,
+      ease: 'Bounce.easeOut',
+      onComplete: () => scene.cameras.main.shake(80, 0.004),
+    });
 
     this.cursors = scene.input.keyboard.createCursorKeys();
     this.keys = scene.input.keyboard.addKeys({
@@ -50,16 +62,28 @@ export class WarriorController {
       || Phaser.Input.Keyboard.JustDown(this.keys.w)
       || Phaser.Input.Keyboard.JustDown(this.keys.space);
 
+    let moving = false;
     if (left) {
       this.sprite.setVelocityX(-PLAYER.SPEED);
       this.facing = -1;
       this.sprite.setFlipX(true);
+      moving = true;
     } else if (right) {
       this.sprite.setVelocityX(PLAYER.SPEED);
       this.facing = 1;
       this.sprite.setFlipX(false);
+      moving = true;
     } else {
       this.sprite.setVelocityX(0);
+    }
+
+    if (moving && this.sprite.anims) {
+      if (this.scene.textures.exists('sheet_warrior')) {
+        this.sprite.play('warrior-walk', true);
+      }
+    } else if (this.sprite.anims) {
+      this.sprite.anims.stop();
+      this.sprite.setTexture('tex_warrior');
     }
 
     if (this.sprite.body.blocked.down || this.sprite.body.touching.down) {
@@ -69,7 +93,7 @@ export class WarriorController {
     if (jumpPressed && this.jumps < PLAYER.MAX_JUMPS) {
       this.sprite.setVelocityY(PLAYER.JUMP);
       this.jumps += 1;
-      sound.play('jump');
+      eventBus.emit(Events.PLAYER_JUMP);
     }
 
     if (this.canAttack && Phaser.Input.Keyboard.JustDown(this.keys.j)) {
@@ -91,7 +115,7 @@ export class WarriorController {
     const now = this.scene.time.now;
     if (now - this.lastAttack < PLAYER.ATTACK_COOLDOWN) return null;
     this.lastAttack = now;
-    sound.play('sword');
+    eventBus.emit(Events.PLAYER_ATTACK);
 
     const slash = this.scene.add.image(
       this.sprite.x + this.facing * 36,
@@ -133,7 +157,7 @@ export class WarriorController {
     if (gameState.hp >= gameState.maxHp) return false;
     gameState.lingzhi -= 1;
     gameState.hp = Math.min(gameState.maxHp, gameState.hp + gameState.maxHp * ITEM.LINGZHI_HEAL);
-    sound.play('heal');
+    eventBus.emit(Events.PLAYER_HEAL);
     this.scene.cameras.main.flash(120, 80, 200, 120);
     return true;
   }
@@ -143,8 +167,9 @@ export class WarriorController {
     if (now < this.invulnUntil) return false;
     gameState.hp = Math.max(0, gameState.hp - amount);
     this.invulnUntil = now + PLAYER.INVULN_MS;
-    sound.play('hurt');
+    eventBus.emit(Events.PLAYER_HURT);
     this.scene.cameras.main.shake(160, 0.01);
+    this.scene.cameras.main.flash(80, 180, 40, 40);
     return true;
   }
 

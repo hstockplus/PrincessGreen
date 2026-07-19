@@ -5,6 +5,8 @@ import { HUD } from '../ui/HUD.js';
 import { WarriorController } from '../utils/WarriorController.js';
 import { gameState } from '../utils/gameState.js';
 import { sound } from '../utils/sound.js';
+import { eventBus, Events } from '../core/EventBus.js';
+import { registerTestHandler } from '../testing/TestAPI.js';
 
 export class CastleScene extends Phaser.Scene {
   constructor() {
@@ -12,15 +14,16 @@ export class CastleScene extends Phaser.Scene {
   }
 
   create() {
+    gameState.phase = 'castle';
     sound.playBgm('castle');
     this.cameras.main.fadeIn(400, 0, 0, 0);
+    this.cameras.main.flash(220, 30, 20, 40);
     this.drawCastle();
     this.createGround();
 
     this.warrior = new WarriorController(this, 160, GAME.HEIGHT - 160, { canAttack: true });
     this.physics.add.collider(this.warrior.sprite, this.ground);
 
-    // 替换为精灵图资源
     this.dragon = this.physics.add.sprite(GAME.WIDTH * 0.72, GAME.HEIGHT - 140, 'tex_dragon');
     this.dragon.setCollideWorldBounds(true);
     this.dragon.body.setAllowGravity(false);
@@ -44,6 +47,29 @@ export class CastleScene extends Phaser.Scene {
 
     this.state = 'intro';
     this.setBattleUi(false);
+
+    registerTestHandler('advanceDialogue', () => this.dialog.forceAdvance());
+    registerTestHandler('pickDialogueChoice', (id) => this.dialog.forcePick(id));
+    registerTestHandler('forceBattleWin', () => {
+      if (this.state === 'intro' || this.state === 'reveal') {
+        this.dialog.hide();
+        this.dialog.onComplete = null;
+      }
+      if (this.state !== 'battle' && this.state !== 'aftermath' && this.state !== 'reveal') {
+        this.startBattle();
+      }
+      this.dragonHp = 0;
+      this.dragon.setVisible(false);
+      this.setBattleUi(false);
+      gameState.branch = 'win';
+      this.state = 'aftermath';
+      this.runKissReveal('win');
+    });
+    registerTestHandler('moveWarrior', (x, y) => {
+      this.warrior.sprite.setPosition(x, y);
+      this.warrior.sprite.body.setVelocity(0, 0);
+    });
+
     this.runIntro();
   }
 
@@ -57,14 +83,9 @@ export class CastleScene extends Phaser.Scene {
     const g = this.add.graphics();
     g.fillGradientStyle(0x0a0810, 0x0a0810, 0x1a1220, 0x1a1220, 1);
     g.fillRect(0, 0, GAME.WIDTH, GAME.HEIGHT);
-    // treasure piles — 替换为精灵图资源
-    g.fillStyle(COLORS.GOLD, 0.55);
     for (let i = 0; i < 8; i++) {
-      g.fillEllipse(100 + i * 150, GAME.HEIGHT - 90, 80, 30);
+      this.add.image(100 + i * 150, GAME.HEIGHT - 78, 'tex_treasure').setScale(1.4).setDepth(2);
     }
-    g.fillStyle(0x8888aa, 0.35);
-    g.fillEllipse(200, GAME.HEIGHT - 100, 40, 20);
-    g.fillEllipse(900, GAME.HEIGHT - 105, 50, 22);
 
     this.add.text(GAME.WIDTH / 2, 36, '第三幕 · 恶龙城堡', {
       fontFamily: FONT.FAMILY,
@@ -138,7 +159,7 @@ export class CastleScene extends Phaser.Scene {
     fb.setBounce(0.2);
     fb.setVelocity(-220 + Phaser.Math.Between(-40, 40), -280);
     fb.setGravityY(GAME.GRAVITY);
-    sound.play('fireball');
+    eventBus.emit(Events.FIREBALL);
     this.time.delayedCall(4000, () => fb.destroy());
   }
 
@@ -179,7 +200,7 @@ export class CastleScene extends Phaser.Scene {
         this.dragonHp -= hit.damage;
         this.dragon.setTint(0xffffff);
         this.time.delayedCall(80, () => this.dragon.clearTint());
-        sound.play('hit');
+        eventBus.emit(Events.HIT);
       }
     }
 
@@ -226,7 +247,7 @@ export class CastleScene extends Phaser.Scene {
 
     this.princess.setTexture('tex_frog_princess').setScale(1.1);
     this.cameras.main.flash(400, 40, 120, 60);
-    sound.play('transform');
+    eventBus.emit(Events.TRANSFORM);
 
     this.time.delayedCall(900, () => {
       this.cameras.main.fadeOut(500, 0, 0, 0);

@@ -4,6 +4,8 @@ import { HUD } from '../ui/HUD.js';
 import { WarriorController } from '../utils/WarriorController.js';
 import { gameState } from '../utils/gameState.js';
 import { sound } from '../utils/sound.js';
+import { eventBus, Events } from '../core/EventBus.js';
+import { registerTestHandler } from '../testing/TestAPI.js';
 
 const LEVEL_WIDTH = GAME.WIDTH * 4.5;
 
@@ -13,8 +15,10 @@ export class ChaseScene extends Phaser.Scene {
   }
 
   create() {
+    gameState.phase = 'chase';
     sound.playBgm('chase');
     this.cameras.main.fadeIn(400, 0, 0, 0);
+    this.cameras.main.flash(200, 60, 20, 20);
     gameState.hp = Math.max(gameState.hp, 40);
 
     this.physics.world.setBounds(0, 0, LEVEL_WIDTH, GAME.HEIGHT);
@@ -51,6 +55,12 @@ export class ChaseScene extends Phaser.Scene {
       fontSize: '16px',
       color: COLORS.GOLD_LIGHT,
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(900);
+
+    registerTestHandler('forceEscape', () => this.win());
+    registerTestHandler('moveWarrior', (x, y) => {
+      this.warrior.sprite.setPosition(x, y);
+      this.warrior.sprite.body.setVelocity(0, 0);
+    });
   }
 
   drawTunnel() {
@@ -95,7 +105,7 @@ export class ChaseScene extends Phaser.Scene {
     const now = this.time.now;
     if (now - this.lastDash < CHASE.DASH_COOLDOWN) return;
     this.lastDash = now;
-    sound.play('dash');
+    eventBus.emit(Events.DASH);
     this.warrior.sprite.x += CHASE.DASH_DISTANCE;
     this.warrior.invulnUntil = now + CHASE.DASH_INVULN;
     this.warrior.sprite.setTint(0xffd700);

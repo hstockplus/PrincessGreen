@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { GAME, COLORS, FONT } from '../utils/constants.js';
 import { DialogBox } from '../ui/DialogBox.js';
 import { sound } from '../utils/sound.js';
+import { gameState } from '../utils/gameState.js';
+import { registerTestHandler } from '../testing/TestAPI.js';
 
 export class PalaceScene extends Phaser.Scene {
   constructor() {
@@ -9,8 +11,11 @@ export class PalaceScene extends Phaser.Scene {
   }
 
   create() {
+    gameState.phase = 'palace';
     sound.playBgm('palace');
     this.drawPalace();
+    this.cameras.main.fadeIn(400, 0, 0, 0);
+    this.cameras.main.flash(250, 40, 30, 20);
 
     this.add.text(GAME.WIDTH / 2, 48, '第一幕 · 王宫悬赏', {
       fontFamily: FONT.FAMILY,
@@ -18,11 +23,7 @@ export class PalaceScene extends Phaser.Scene {
       color: COLORS.GOLD_LIGHT,
     }).setOrigin(0.5);
 
-    this.cameras.main.fadeIn(400, 0, 0, 0);
-
-    // 国王剪影（像素后续可替换）
-    this.add.rectangle(GAME.WIDTH * 0.55, GAME.HEIGHT * 0.52, 50, 90, COLORS.GOLD, 0.85);
-    this.add.triangle(GAME.WIDTH * 0.55, GAME.HEIGHT * 0.52 - 60, 0, 30, 25, 0, 50, 30, COLORS.GOLD_LIGHT);
+    this.add.image(GAME.WIDTH * 0.55, GAME.HEIGHT * 0.55, 'tex_king').setScale(1.8);
     this.add.image(GAME.WIDTH * 0.32, GAME.HEIGHT * 0.58, 'tex_warrior').setScale(1.6);
 
     this.add.particles(GAME.WIDTH * 0.5, 100, 'tex_fireball', {
@@ -37,17 +38,17 @@ export class PalaceScene extends Phaser.Scene {
     });
 
     this.dialog = new DialogBox(this);
+    registerTestHandler('advanceDialogue', () => this.dialog.forceAdvance());
+    registerTestHandler('pickDialogueChoice', (id) => this.dialog.forcePick(id));
     this.runIntro();
   }
 
   drawPalace() {
-    // 暗黑水墨宫殿背景
     const g = this.add.graphics();
     g.fillGradientStyle(0x0a0c10, 0x0a0c10, 0x1a1510, 0x1a1510, 1);
     g.fillRect(0, 0, GAME.WIDTH, GAME.HEIGHT);
     g.fillStyle(0x121820, 0.8);
     g.fillRect(0, GAME.HEIGHT * 0.7, GAME.WIDTH, GAME.HEIGHT * 0.3);
-    // pillars
     for (let i = 0; i < 6; i++) {
       const x = 100 + i * 210;
       g.fillStyle(0x2a2418, 0.7);
@@ -55,7 +56,6 @@ export class PalaceScene extends Phaser.Scene {
       g.fillStyle(COLORS.GOLD, 0.25);
       g.fillRect(x - 8, 80, 52, 12);
     }
-    // ink wash clouds
     g.fillStyle(0xffffff, 0.03);
     g.fillEllipse(200, 120, 280, 60);
     g.fillEllipse(900, 100, 320, 50);
