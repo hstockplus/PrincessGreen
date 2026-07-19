@@ -7,7 +7,7 @@ import { sound } from '../utils/sound.js';
 import { eventBus, Events } from '../core/EventBus.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
 import { MobileControls, isTouchDevice } from '../ui/MobileControls.js';
-import { ASSETS, fitSpriteHeight } from '../art/AssetLoader.js';
+import { ASSETS, fitActor, setFacing } from '../art/AssetLoader.js';
 
 const LEVEL_WIDTH = GAME.WIDTH * 4.5;
 
@@ -53,12 +53,11 @@ export class ChaseScene extends Phaser.Scene {
     }
     this.frogPrincess = this.physics.add.sprite(40, walkY, beastKey);
     this.frogPrincess.setOrigin(0.5, 1);
-    if (beastKey === ASSETS.FROG_BEAST) {
-      fitSpriteHeight(this.frogPrincess, GAME.HEIGHT * 0.55);
-    }
+    fitActor(this.frogPrincess, 'frogBeast');
     this.frogPrincess.body.setAllowGravity(false);
     this.frogPrincess.setImmovable(true);
     this.frogPrincess.setDepth(8);
+    setFacing(this.frogPrincess, 1); // 追击时朝右（玩家前方）
 
     this.hud = new HUD(this);
     this.hud.setQuest('逃出密道！');

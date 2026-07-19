@@ -1,3 +1,5 @@
+import { ACTOR } from '../utils/constants.js';
+
 /** 水墨武侠美术资源键 — 由提示词 AI 生成 */
 export const ASSETS = {
   BG_PALACE: 'bg_palace',
@@ -43,4 +45,33 @@ export function fitSpriteHeight(sprite, targetH) {
   if (!sprite?.height) return sprite;
   sprite.setScale(targetH / sprite.height);
   return sprite;
+}
+
+/** 统一角色身高（脚底对齐用 origin 0.5,1） */
+export function fitActor(sprite, role = 'warrior') {
+  const map = {
+    warrior: ACTOR.WARRIOR_H,
+    princess: ACTOR.PRINCESS_H,
+    dragon: ACTOR.DRAGON_H,
+    frog: ACTOR.FROG_H,
+    frogBeast: ACTOR.FROG_BEAST_H,
+    bug: ACTOR.BUG_H,
+  };
+  return fitSpriteHeight(sprite, map[role] ?? ACTOR.WARRIOR_H);
+}
+
+/**
+ * 设置水平朝向。默认立绘朝右：facing>0 不翻转，facing<0 翻转。
+ * @param {Phaser.GameObjects.Sprite|Phaser.GameObjects.Image} sprite
+ * @param {number} facing 1右 / -1左
+ * @param {{ artFacesRight?: boolean }} [opts]
+ */
+export function setFacing(sprite, facing, opts = {}) {
+  const artRight = opts.artFacesRight !== false;
+  if (artRight) {
+    sprite.setFlipX(facing < 0);
+  } else {
+    // 立绘本身朝左（如恶龙）
+    sprite.setFlipX(facing > 0);
+  }
 }

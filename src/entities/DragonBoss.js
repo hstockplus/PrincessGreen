@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ASSETS, fitSpriteHeight } from '../art/AssetLoader.js';
+import { ASSETS, fitActor, setFacing } from '../art/AssetLoader.js';
 import { GAME, DRAGON, COLORS, FONT } from '../utils/constants.js';
 
 /**
@@ -42,14 +42,17 @@ export class DragonBoss {
     this.sprite.setDepth(5);
     this.sprite.setCollideWorldBounds(true);
     this.sprite.body.setAllowGravity(false);
+    this.sprite.setOrigin(0.5, 1);
     if (key === ASSETS.DRAGON) {
-      fitSpriteHeight(this.sprite, GAME.HEIGHT * 0.32);
-      this.sprite.body.setSize(this.sprite.width * 0.55, this.sprite.height * 0.4);
+      fitActor(this.sprite, 'dragon');
+      this.sprite.body.setSize(this.sprite.width * 0.5, this.sprite.height * 0.35);
+      this.sprite.body.setOffset(this.sprite.width * 0.25, this.sprite.height * 0.55);
     } else {
       this.sprite.body.setSize(160, 60);
     }
     this.sprite.setData('entity', this);
-    this.sprite.setFlipX(true);
+    // 恶龙立绘默认朝左
+    setFacing(this.sprite, 1, { artFacesRight: false });
 
     this.hpBarBg = scene.add.rectangle(GAME.WIDTH / 2, 48, 520, 18, 0x1a1210, 0.9)
       .setDepth(30).setStrokeStyle(1, 0x6a4030);
@@ -95,7 +98,7 @@ export class DragonBoss {
 
     this.timer -= delta;
     const dx = playerX - this.sprite.x;
-    this.sprite.setFlipX(dx > 0);
+    setFacing(this.sprite, dx >= 0 ? 1 : -1, { artFacesRight: false });
 
     if (this.phase === 'idle' || this.phase === 'chase') {
       const dist = Math.hypot(dx, playerY - this.sprite.y);

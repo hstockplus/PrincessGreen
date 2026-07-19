@@ -9,7 +9,7 @@ import { sound } from '../utils/sound.js';
 import { eventBus, Events } from '../core/EventBus.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
 import { MobileControls, isTouchDevice } from '../ui/MobileControls.js';
-import { ASSETS, showBackground, fitSpriteHeight } from '../art/AssetLoader.js';
+import { ASSETS, showBackground, fitActor } from '../art/AssetLoader.js';
 
 export class CastleScene extends Phaser.Scene {
   constructor() {
@@ -48,7 +48,8 @@ export class CastleScene extends Phaser.Scene {
     const pKey = this.textures.exists(ASSETS.PRINCESS) ? ASSETS.PRINCESS : null;
     if (pKey) {
       this.princess = this.add.image(GAME.WIDTH * 0.85, walkY, pKey).setOrigin(0.5, 1).setDepth(6);
-      fitSpriteHeight(this.princess, GAME.HEIGHT * 0.48);
+      fitActor(this.princess, 'princess');
+      this.princess.setFlipX(true); // 侧视朝右的立绘，面向恶龙（左）
     } else {
       // TODO: 替换为实际美术资源 — 红衣持剑女
       this.princess = this.add.rectangle(GAME.WIDTH * 0.85, walkY - 40, 36, 80, COLORS.PRINCESS, 1).setDepth(6);
@@ -242,9 +243,10 @@ export class CastleScene extends Phaser.Scene {
     const beast = this.textures.exists(ASSETS.FROG_BEAST) ? ASSETS.FROG_BEAST : null;
     if (beast && this.princess.setTexture) {
       this.princess.setTexture(beast);
-      fitSpriteHeight(this.princess, GAME.HEIGHT * 0.42);
+      fitActor(this.princess, 'frogBeast');
+      this.princess.setFlipX(false);
     } else if (this.princess.setFillStyle) {
-      // TODO: 替换为实际美术资源 — 巨大绿色青蛙
+      // TODO: 替换为实际美术资源 — 美人蛙公主
       this.princess.setFillStyle(COLORS.FROG, 1);
     }
     this.cameras.main.flash(400, 40, 120, 60);

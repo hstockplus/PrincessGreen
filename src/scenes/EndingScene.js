@@ -4,7 +4,7 @@ import { sound } from '../utils/sound.js';
 import { gameState } from '../utils/gameState.js';
 import { eventBus, Events } from '../core/EventBus.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
-import { ASSETS, showBackground, fitSpriteHeight } from '../art/AssetLoader.js';
+import { ASSETS, showBackground, fitActor } from '../art/AssetLoader.js';
 
 export class EndingScene extends Phaser.Scene {
   constructor() {
@@ -32,7 +32,8 @@ export class EndingScene extends Phaser.Scene {
       .setOrigin(0.5, 1)
       .setTint(0xffe08a)
       .setDepth(10);
-    fitSpriteHeight(toad, 64);
+    fitActor(toad, 'frog');
+    toad.setScale(toad.scaleX * 0.85);
 
     const g = this.add.graphics().setDepth(9);
     g.fillStyle(0x3a2a10, 0.45);

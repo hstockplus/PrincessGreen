@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
-import { GAME, WORLD, PLAYER, COLORS } from '../utils/constants.js';
+import { GAME, WORLD, PLAYER, COLORS, ACTOR } from '../utils/constants.js';
 import { gameState } from '../utils/gameState.js';
 import { eventBus, Events } from '../core/EventBus.js';
-import { ASSETS } from '../art/AssetLoader.js';
+import { ASSETS, fitActor, setFacing } from '../art/AssetLoader.js';
 import { BladeQi } from './BladeQi.js';
 
 /**
@@ -23,9 +23,8 @@ export class Warrior {
     const key = scene.textures.exists(ASSETS.WARRIOR) ? ASSETS.WARRIOR : null;
     if (key) {
       this.sprite = scene.physics.add.sprite(x, y, key);
-      this.sprite.setOrigin(0.5, 0.92);
-      const targetH = GAME.HEIGHT * 0.38;
-      this.sprite.setScale(targetH / this.sprite.height);
+      this.sprite.setOrigin(0.5, 1);
+      fitActor(this.sprite, 'warrior');
     } else {
       // TODO: 替换为实际美术资源 — 灰衣斗笠侠客
       const g = scene.make.graphics({ x: 0, y: 0, add: false });
@@ -35,13 +34,15 @@ export class Warrior {
       g.generateTexture('ph_warrior', 40, 60);
       g.destroy();
       this.sprite = scene.physics.add.sprite(x, y, 'ph_warrior');
-      this.sprite.setOrigin(0.5, 0.92);
+      this.sprite.setOrigin(0.5, 1);
     }
 
     this.sprite.setCollideWorldBounds(true);
     this.sprite.body.setAllowGravity(false);
+    this.sprite.setDepth(10);
+    setFacing(this.sprite, this.facing);
     const bw = 28;
-    const bh = 20;
+    const bh = 22;
     this.sprite.body.setSize(bw / this.sprite.scaleX, bh / this.sprite.scaleY);
     this.sprite.body.setOffset(
       (this.sprite.width - bw / this.sprite.scaleX) * 0.5,
@@ -71,11 +72,15 @@ export class Warrior {
 
   setMobileState(m) { this.mobile = m; }
 
+  applyFacing() {
+    setFacing(this.sprite, this.facing, { artFacesRight: ACTOR.FACE_RIGHT });
+  }
+
   aimFromPointer(p) {
-    const a = Phaser.Math.Angle.Between(this.sprite.x, this.sprite.y - 30, p.worldX, p.worldY);
+    const a = Phaser.Math.Angle.Between(this.sprite.x, this.sprite.y - 40, p.worldX, p.worldY);
     this.aimAngle = a;
     this.facing = Math.cos(a) >= 0 ? 1 : -1;
-    this.sprite.setFlipX(this.facing < 0);
+    this.applyFacing();
   }
 
   update(dtOrBlocked = 16, blockedFlag = false) {
@@ -121,7 +126,7 @@ export class Warrior {
       this.aimAngle = Math.atan2(vy, vx);
       if (vx !== 0) {
         this.facing = vx > 0 ? 1 : -1;
-        this.sprite.setFlipX(this.facing < 0);
+        this.applyFacing();
       }
     }
 

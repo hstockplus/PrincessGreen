@@ -9,7 +9,7 @@ import { sound } from '../utils/sound.js';
 import { eventBus, Events } from '../core/EventBus.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
 import { MobileControls, isTouchDevice } from '../ui/MobileControls.js';
-import { ASSETS, fitSpriteHeight } from '../art/AssetLoader.js';
+import { ASSETS, fitActor, fitSpriteHeight } from '../art/AssetLoader.js';
 
 export class SwampScene extends Phaser.Scene {
   constructor() {
@@ -123,7 +123,7 @@ export class SwampScene extends Phaser.Scene {
     const fy = GAME.HEIGHT * 0.7;
     if (key) {
       this.frog = this.physics.add.staticImage(620, fy, key).setOrigin(0.5, 1);
-      fitSpriteHeight(this.frog, 90);
+      fitActor(this.frog, 'frog');
       this.frog.refreshBody();
     } else {
       // TODO: 替换为实际美术资源 — 绿色小圆+金冠

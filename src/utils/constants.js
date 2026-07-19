@@ -85,6 +85,18 @@ export const CHASE = {
   DASH_INVULN: 1000,
 };
 
+/** 角色显示高度（像素）— 统一比例，避免忽大忽小 */
+export const ACTOR = {
+  WARRIOR_H: 168,
+  PRINCESS_H: 168,
+  DRAGON_H: 200,
+  FROG_H: 70,
+  FROG_BEAST_H: 188,
+  BUG_H: 36,
+  /** 立绘默认朝右；flipX 在朝左时开启 */
+  FACE_RIGHT: true,
+};
+
 export const FONT = {
   FAMILY: '"STKaiti", "KaiTi", "SimKai", "Microsoft YaHei", serif',
 };

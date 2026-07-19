@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { BUG } from '../utils/constants.js';
+import { BUG, ACTOR } from '../utils/constants.js';
+import { fitSpriteHeight } from '../art/AssetLoader.js';
 
 /**
  * 沼泽毒虫 — 平面游荡小怪
@@ -35,9 +36,10 @@ export class SwampBug {
 
     this.sprite = scene.physics.add.sprite(x, y, 'bug_placeholder');
     this.sprite.body.setAllowGravity(false);
+    fitSpriteHeight(this.sprite, ACTOR.BUG_H);
     this.sprite.setDepth(5);
     this.sprite.setCollideWorldBounds(true);
-    this.sprite.body.setSize(36, 22);
+    this.sprite.body.setSize(28, 18);
     this.sprite.setData('entity', this);
 
     this.hpBar = scene.add.graphics().setDepth(6);

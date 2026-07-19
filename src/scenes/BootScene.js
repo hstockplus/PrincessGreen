@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME, COLORS, FONT } from '../utils/constants.js';
+import { GAME, COLORS, FONT, ACTOR } from '../utils/constants.js';
 import { ensurePlaceholderTextures } from '../utils/placeholders.js';
 import { gameState } from '../utils/gameState.js';
 import { sound } from '../utils/sound.js';
@@ -57,9 +57,9 @@ export class BootScene extends Phaser.Scene {
 
     // 右下角立绘剪影
     if (this.textures.exists(ASSETS.WARRIOR)) {
-      const w = this.add.image(GAME.WIDTH * 0.82, GAME.HEIGHT * 0.72, ASSETS.WARRIOR)
-        .setOrigin(0.5, 1).setAlpha(0.85).setDepth(5);
-      w.setScale((GAME.HEIGHT * 0.55) / w.height);
+      const w = this.add.image(GAME.WIDTH * 0.82, GAME.HEIGHT * 0.78, ASSETS.WARRIOR)
+        .setOrigin(0.5, 1).setAlpha(0.9).setDepth(5);
+      w.setScale((ACTOR.WARRIOR_H * 1.8) / w.height);
     }
 
     const go = async () => {

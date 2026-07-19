@@ -4,7 +4,7 @@ import { DialogBox } from '../ui/DialogBox.js';
 import { sound } from '../utils/sound.js';
 import { gameState } from '../utils/gameState.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
-import { ASSETS, showBackground, fitSpriteHeight } from '../art/AssetLoader.js';
+import { ASSETS, showBackground, fitActor } from '../art/AssetLoader.js';
 
 export class PalaceScene extends Phaser.Scene {
   constructor() {
@@ -33,16 +33,17 @@ export class PalaceScene extends Phaser.Scene {
       color: COLORS.UI_MUTED,
     }).setOrigin(0.5).setDepth(50);
 
-    // 立绘：勇士左、国王位用公主剪影占位靠右（悬赏氛围）
+    // 立绘：勇士左、悬赏画像右（统一身高比例）
     const warrior = this.add.image(GAME.WIDTH * 0.28, GAME.HEIGHT * 0.92, ASSETS.WARRIOR)
       .setOrigin(0.5, 1).setDepth(10);
-    fitSpriteHeight(warrior, GAME.HEIGHT * 0.62);
+    fitActor(warrior, 'warrior');
+    warrior.setScale(warrior.scaleX * 1.55);
 
     if (this.textures.exists(ASSETS.PRINCESS)) {
-      // 空王座侧的「悬赏画像」氛围 — 用公主立绘半透明
       const portrait = this.add.image(GAME.WIDTH * 0.72, GAME.HEIGHT * 0.55, ASSETS.PRINCESS)
-        .setOrigin(0.5, 1).setAlpha(0.35).setDepth(5);
-      fitSpriteHeight(portrait, GAME.HEIGHT * 0.4);
+        .setOrigin(0.5, 1).setAlpha(0.4).setDepth(5);
+      fitActor(portrait, 'princess');
+      portrait.setScale(portrait.scaleX * 1.2);
     }
 
     this.dialog = new DialogBox(this);
