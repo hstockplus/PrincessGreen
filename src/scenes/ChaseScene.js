@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
-import { GAME, COLORS, FONT, CHASE } from '../utils/constants.js';
+import { GAME, COLORS, FONT, CHASE, WORLD } from '../utils/constants.js';
 import { HUD } from '../ui/HUD.js';
-import { WarriorController } from '../utils/WarriorController.js';
+import { Warrior } from '../entities/Warrior.js';
 import { gameState } from '../utils/gameState.js';
 import { sound } from '../utils/sound.js';
 import { eventBus, Events } from '../core/EventBus.js';
@@ -11,6 +11,9 @@ import { ASSETS, fitSpriteHeight } from '../art/AssetLoader.js';
 
 const LEVEL_WIDTH = GAME.WIDTH * 4.5;
 
+/**
+ * 强制向右卷轴逃亡 — 上下躲避障碍，非平台跳跃
+ */
 export class ChaseScene extends Phaser.Scene {
   constructor() {
     super('ChaseScene');
@@ -27,25 +30,49 @@ export class ChaseScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, LEVEL_WIDTH, GAME.HEIGHT);
 
     this.drawTunnel();
-    this.createGroundAndHazards();
+    this.createHazards();
 
-    this.warrior = new WarriorController(this, 200, GAME.HEIGHT - 70);
-    this.physics.add.collider(this.warrior.sprite, this.ground);
+    const walkY = GAME.HEIGHT * 0.7;
+    this.warrior = new Warrior(this, 220, walkY);
     this.cameras.main.startFollow(this.warrior.sprite, true, 0.12, 0.08);
 
-    const beast = this.textures.exists(ASSETS.FROG_BEAST) ? ASSETS.FROG_BEAST : 'tex_frog_princess';
-    this.frogPrincess = this.physics.add.sprite(40, GAME.HEIGHT - 70, beast);
+    let beastKey = ASSETS.FROG_BEAST;
+    if (!this.textures.exists(beastKey)) {
+      // TODO: 替换为实际美术资源 — 巨大绿色青蛙
+      const g = this.make.graphics({ x: 0, y: 0, add: false });
+      g.fillStyle(COLORS.FROG, 1);
+      g.fillEllipse(60, 50, 120, 90);
+      g.fillCircle(40, 30, 28);
+      g.fillCircle(80, 30, 28);
+      g.fillStyle(0xffee88, 1);
+      g.fillCircle(32, 24, 6);
+      g.fillCircle(72, 24, 6);
+      g.generateTexture('frog_beast_ph', 120, 100);
+      g.destroy();
+      beastKey = 'frog_beast_ph';
+    }
+    this.frogPrincess = this.physics.add.sprite(40, walkY, beastKey);
     this.frogPrincess.setOrigin(0.5, 1);
-    fitSpriteHeight(this.frogPrincess, GAME.HEIGHT * 0.55);
+    if (beastKey === ASSETS.FROG_BEAST) {
+      fitSpriteHeight(this.frogPrincess, GAME.HEIGHT * 0.55);
+    }
     this.frogPrincess.body.setAllowGravity(false);
     this.frogPrincess.setImmovable(true);
+    this.frogPrincess.setDepth(8);
 
     this.hud = new HUD(this);
+    this.hud.setQuest('逃出密道！');
     this.hud.setHint(isTouchDevice()
-      ? '强制前进！跳躲避 · 轻功无敌冲刺'
-      : '强制前进！空格跳跃 · Shift 金蟾脱壳（无敌冲刺）');
-    this.mobile = new MobileControls(this, { showDash: true, showInteract: false, showAttack: false });
-    this.add.text(GAME.WIDTH / 2, 36, '第四幕 · 青蛙公主复仇记', {
+      ? '强制右移！上下躲障 · 轻功瞬移无敌'
+      : '强制右移！W/S 上下躲避 · Shift 金蟾脱壳');
+    this.mobile = new MobileControls(this, {
+      showDash: true,
+      showInteract: false,
+      showAttack: false,
+      showSkill: false,
+    });
+
+    this.add.text(GAME.WIDTH / 2, 36, '第四幕 · 城堡密道逃亡', {
       fontFamily: FONT.FAMILY,
       fontSize: '24px',
       color: COLORS.GOLD_LIGHT,
@@ -55,8 +82,9 @@ export class ChaseScene extends Phaser.Scene {
     this.scrollX = 0;
     this.failed = false;
     this.won = false;
+    this.hazardCd = 0;
 
-    this.dashText = this.add.text(GAME.WIDTH - 24, 70, '', {
+    this.dashText = this.add.text(GAME.WIDTH - 24, 100, '', {
       fontFamily: FONT.FAMILY,
       fontSize: '16px',
       color: COLORS.GOLD_LIGHT,
@@ -78,16 +106,16 @@ export class ChaseScene extends Phaser.Scene {
     this.add.rectangle(LEVEL_WIDTH / 2, GAME.HEIGHT / 2, LEVEL_WIDTH, GAME.HEIGHT, 0x000000, 0.15).setDepth(-9);
   }
 
-  createGroundAndHazards() {
-    this.ground = this.physics.add.staticGroup();
-    const ground = this.add.rectangle(LEVEL_WIDTH / 2, GAME.HEIGHT - 28, LEVEL_WIDTH, 56, 0x000000, 0);
-    this.physics.add.existing(ground, true);
-    this.ground.add(ground);
-
-    // 少量落石障碍（非马里奥跳台）
+  createHazards() {
+    // 上下分布的障碍柱 — 需上下躲避，非跳台
     this.hazards = this.physics.add.staticGroup();
-    [900, 1700, 2600, 3400, 4200].forEach((x) => {
-      const rock = this.add.rectangle(x, GAME.HEIGHT - 70, 36, 36, 0x4a3020, 0.85)
+    const layout = [
+      [900, 0.55], [1300, 0.78], [1700, 0.5], [2200, 0.8],
+      [2700, 0.58], [3200, 0.75], [3700, 0.52], [4200, 0.7], [4800, 0.6],
+    ];
+    layout.forEach(([x, yR]) => {
+      // TODO: 替换为实际美术资源
+      const rock = this.add.rectangle(x, GAME.HEIGHT * yR, 40, 48, 0x4a3020, 0.9)
         .setStrokeStyle(2, COLORS.BLOOD, 0.6);
       this.physics.add.existing(rock, true);
       this.hazards.add(rock);
@@ -117,6 +145,7 @@ export class ChaseScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(1000);
     this.time.delayedCall(1200, () => {
       gameState.hp = 80;
+      gameState.mp = gameState.maxMp;
       this.scene.restart();
     });
   }
@@ -131,41 +160,50 @@ export class ChaseScene extends Phaser.Scene {
   update(time, delta) {
     if (this.failed || this.won) return;
 
-    // auto-scroll pressure: push warrior right-ish via camera left bound advancing
-    this.scrollX += CHASE.SCROLL_SPEED * (delta / 1000) * 0.35;
+    // 强制卷轴：镜头与下限持续右移
+    this.scrollX += CHASE.SCROLL_SPEED * (delta / 1000);
     const minX = this.scrollX;
-    if (this.warrior.x < minX + 80) {
-      this.warrior.sprite.x = minX + 80;
+    if (this.warrior.x < minX + 90) {
+      this.warrior.sprite.x = minX + 90;
     }
+    this.cameras.main.scrollX = Math.max(this.cameras.main.scrollX, minX);
 
     const pad = this.mobile.consume();
-    // 逃生关强制向右倾向
+    // 默认向右推进，仍可上下躲避、略微减速
     if (!pad.left && !pad.right) pad.right = true;
     this.warrior.setMobileState(pad);
-    this.warrior.update(false);
+    this.warrior.update(delta, false);
 
-    // frog princess chases
-    const targetX = this.warrior.x - 120;
+    // 限制在行走带
+    const yMin = GAME.HEIGHT * WORLD.WALK_Y_MIN;
+    const yMax = GAME.HEIGHT * WORLD.WALK_Y_MAX;
+    this.warrior.sprite.y = Phaser.Math.Clamp(this.warrior.sprite.y, yMin, yMax);
+
+    // 青蛙公主追击（身后）
+    const targetX = this.warrior.x - 140;
     const dx = targetX - this.frogPrincess.x;
-    this.frogPrincess.x += Math.sign(dx) * Math.min(Math.abs(dx), CHASE.PRINCESS_SPEED * (delta / 1000) * 1.2);
-    this.frogPrincess.y = this.warrior.y - 10;
+    this.frogPrincess.x += Math.sign(dx) * Math.min(Math.abs(dx), CHASE.PRINCESS_SPEED * (delta / 1000) * 1.15);
+    this.frogPrincess.y = Phaser.Math.Clamp(
+      Phaser.Math.Linear(this.frogPrincess.y, this.warrior.y, 0.08),
+      yMin,
+      yMax,
+    );
 
-    if (this.warrior.justDash()) {
-      this.tryDash();
-    }
+    if (this.warrior.justDash()) this.tryDash();
 
-    // catch
     if (this.physics.overlap(this.warrior.sprite, this.frogPrincess)) {
       if (this.warrior.takeDamage(CHASE.CATCH_DAMAGE)) {
         this.hud.refresh();
-        this.warrior.sprite.x += 40;
+        this.warrior.sprite.x += 50;
       }
     }
 
-    this.physics.overlap(this.warrior.sprite, this.hazards, () => {
-      this.warrior.takeDamage(10);
-      this.hud.refresh();
-    });
+    if (this.physics.overlap(this.warrior.sprite, this.hazards)) {
+      if (time > this.hazardCd) {
+        this.hazardCd = time + 500;
+        this.warrior.takeDamage(10);
+      }
+    }
 
     const cd = Math.max(0, CHASE.DASH_COOLDOWN - (time - this.lastDash));
     this.dashText.setText(cd > 0

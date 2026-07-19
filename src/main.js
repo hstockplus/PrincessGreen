@@ -27,7 +27,7 @@ const config = {
   physics: {
     default: 'arcade',
     arcade: {
-      gravity: { y: GAME.GRAVITY },
+      gravity: { y: 0 }, // 横屏 ARPG 平面，无重力平台跳跃
       debug: false,
     },
   },

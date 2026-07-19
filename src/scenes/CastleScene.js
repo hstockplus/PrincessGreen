@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
-import { GAME, COLORS, FONT, PLAYER, DRAGON } from '../utils/constants.js';
+import { GAME, COLORS, FONT, DRAGON, WORLD } from '../utils/constants.js';
 import { DialogBox } from '../ui/DialogBox.js';
 import { HUD } from '../ui/HUD.js';
-import { WarriorController } from '../utils/WarriorController.js';
+import { Warrior } from '../entities/Warrior.js';
+import { DragonBoss } from '../entities/DragonBoss.js';
 import { gameState } from '../utils/gameState.js';
 import { sound } from '../utils/sound.js';
 import { eventBus, Events } from '../core/EventBus.js';
@@ -20,45 +21,53 @@ export class CastleScene extends Phaser.Scene {
     sound.playBgm('castle');
     this.cameras.main.fadeIn(400, 0, 0, 0);
     this.cameras.main.flash(220, 30, 20, 40);
-    this.drawCastle();
-    this.createGround();
+    this.physics.world.setBounds(0, 0, GAME.WIDTH, GAME.HEIGHT);
 
-    this.warrior = new WarriorController(this, 160, GAME.HEIGHT - 70, { canAttack: true });
-    this.physics.add.collider(this.warrior.sprite, this.ground);
+    showBackground(this, ASSETS.BG_CASTLE);
+    this.add.rectangle(GAME.WIDTH / 2, GAME.HEIGHT / 2, GAME.WIDTH, GAME.HEIGHT, 0x000000, 0.2).setDepth(-5);
+    this.add.text(GAME.WIDTH / 2, 36, '第三幕 · 恶龙城堡', {
+      fontFamily: FONT.FAMILY,
+      fontSize: '24px',
+      color: COLORS.GOLD_LIGHT,
+      stroke: '#000',
+      strokeThickness: 4,
+    }).setOrigin(0.5).setDepth(50);
 
-    const dKey = this.textures.exists(ASSETS.DRAGON) ? ASSETS.DRAGON : 'tex_dragon';
-    this.dragon = this.physics.add.sprite(GAME.WIDTH * 0.7, GAME.HEIGHT - 70, dKey);
-    this.dragon.setOrigin(0.5, 1);
-    fitSpriteHeight(this.dragon, GAME.HEIGHT * 0.28);
-    this.dragon.setCollideWorldBounds(true);
-    this.dragon.body.setAllowGravity(false);
-    this.dragon.body.setSize(this.dragon.width * 0.5, this.dragon.height * 0.35);
-    this.dragonHp = DRAGON.MAX_HP;
-    this.dragonDir = -1;
-    this.lastFire = 0;
-    this.physics.add.collider(this.dragon, this.ground);
+    const walkY = GAME.HEIGHT * 0.72;
+    this.warrior = new Warrior(this, 160, walkY);
 
-    const pKey = this.textures.exists(ASSETS.PRINCESS) ? ASSETS.PRINCESS : 'tex_princess';
-    this.princess = this.add.image(GAME.WIDTH * 0.85, GAME.HEIGHT - 70, pKey).setOrigin(0.5, 1);
-    fitSpriteHeight(this.princess, GAME.HEIGHT * 0.48);
+    this.boss = new DragonBoss(this, GAME.WIDTH * 0.68, walkY - 20);
+    this.boss.onDefeat = () => {
+      if (this.state !== 'battle') return;
+      this.state = 'aftermath';
+      this.boss.setHpVisible(false);
+      gameState.branch = 'win';
+      this.runKissReveal('win');
+    };
 
-    this.fireballs = this.physics.add.group();
+    const pKey = this.textures.exists(ASSETS.PRINCESS) ? ASSETS.PRINCESS : null;
+    if (pKey) {
+      this.princess = this.add.image(GAME.WIDTH * 0.85, walkY, pKey).setOrigin(0.5, 1).setDepth(6);
+      fitSpriteHeight(this.princess, GAME.HEIGHT * 0.48);
+    } else {
+      // TODO: 替换为实际美术资源 — 红衣持剑女
+      this.princess = this.add.rectangle(GAME.WIDTH * 0.85, walkY - 40, 36, 80, COLORS.PRINCESS, 1).setDepth(6);
+    }
+
     this.hud = new HUD(this);
+    this.hud.setQuest('探明公主与恶龙的真相');
     this.hud.setHint(isTouchDevice()
-      ? '左摇杆移动 · 攻/跳 · 药回血 · 点击对话框继续'
-      : 'J / 左键攻击 · Q 用灵芝 · 躲开火球 · 点击继续对话');
+      ? '点击对话框继续 · 战斗时摇杆走位'
+      : '空格继续对话 · 战斗：J 攻击 / K 刀气');
     this.dialog = new DialogBox(this);
-    this.mobile = new MobileControls(this, { showAttack: true, showInteract: false });
+    this.mobile = new MobileControls(this, {
+      showAttack: true,
+      showSkill: true,
+      showInteract: false,
+    });
     this.mobile.setEnabled(false);
 
-    this.dragonBarBg = this.add.rectangle(GAME.WIDTH - 240, 24, 200, 16, 0x201010, 0.85).setOrigin(0, 0.5).setDepth(900);
-    this.dragonBar = this.add.rectangle(GAME.WIDTH - 238, 24, 196, 12, 0x5a8a60, 1).setOrigin(0, 0.5).setDepth(901);
-    this.dragonLabel = this.add.text(GAME.WIDTH - 240, 42, '恶龙', {
-      fontFamily: FONT.FAMILY, fontSize: '14px', color: COLORS.UI_MUTED,
-    }).setDepth(900);
-
     this.state = 'intro';
-    this.setBattleUi(false);
 
     registerTestHandler('advanceDialogue', () => this.dialog.forceAdvance());
     registerTestHandler('pickDialogueChoice', (id) => this.dialog.forcePick(id));
@@ -70,9 +79,10 @@ export class CastleScene extends Phaser.Scene {
       if (this.state !== 'battle' && this.state !== 'aftermath' && this.state !== 'reveal') {
         this.startBattle();
       }
-      this.dragonHp = 0;
-      this.dragon.setVisible(false);
-      this.setBattleUi(false);
+      this.boss.hp = 0;
+      this.boss.alive = false;
+      this.boss.sprite.setVisible(false);
+      this.boss.setHpVisible(false);
       gameState.branch = 'win';
       this.state = 'aftermath';
       this.runKissReveal('win');
@@ -83,31 +93,6 @@ export class CastleScene extends Phaser.Scene {
     });
 
     this.runIntro();
-  }
-
-  setBattleUi(on) {
-    this.dragonBarBg.setVisible(on);
-    this.dragonBar.setVisible(on);
-    this.dragonLabel.setVisible(on);
-  }
-
-  drawCastle() {
-    showBackground(this, ASSETS.BG_CASTLE);
-    this.add.rectangle(GAME.WIDTH / 2, GAME.HEIGHT / 2, GAME.WIDTH, GAME.HEIGHT, 0x000000, 0.2).setDepth(-5);
-    this.add.text(GAME.WIDTH / 2, 36, '第三幕 · 恶龙城堡', {
-      fontFamily: FONT.FAMILY,
-      fontSize: '24px',
-      color: COLORS.GOLD_LIGHT,
-      stroke: '#000',
-      strokeThickness: 4,
-    }).setOrigin(0.5).setDepth(50);
-  }
-
-  createGround() {
-    this.ground = this.physics.add.staticGroup();
-    const ground = this.add.rectangle(GAME.WIDTH / 2, GAME.HEIGHT - 28, GAME.WIDTH, 56, 0x000000, 0);
-    this.physics.add.existing(ground, true);
-    this.ground.add(ground);
   }
 
   async runIntro() {
@@ -123,7 +108,7 @@ export class CastleScene extends Phaser.Scene {
         speaker: '选择',
         text: '你要如何行动？',
         choices: [
-          { label: 'A. 按悬赏杀龙', id: 'fight' },
+          { label: 'A. 杀龙', id: 'fight' },
           { label: 'B. 质问公主', id: 'question' },
         ],
       },
@@ -147,88 +132,78 @@ export class CastleScene extends Phaser.Scene {
     ]);
     gameState.hp = Math.max(1, gameState.hp * 0.2);
     this.cameras.main.shake(400, 0.02);
+    this.boss.sprite.setVisible(false);
     await this.runKissReveal('lose');
   }
 
   startBattle() {
     this.state = 'battle';
-    this.setBattleUi(true);
+    this.boss.setHpVisible(true);
     this.princess.setVisible(false);
     this.mobile.setEnabled(true);
+    this.hud.setQuest('击败恶龙');
     this.hud.setHint(isTouchDevice()
-      ? '摇杆走位 · 攻打龙 · 药回血'
-      : 'J / 左键「金蟾刀法」· Q 灵芝回血 · 躲开火球');
+      ? '八向走位 · 攻/刀气打龙 · 药回血'
+      : 'WASD 走位 · J 普攻 · K 金蟾刀气 · Q 灵芝');
     sound.playBgm('battle');
   }
 
-  updateDragonHpBar() {
-    const r = Phaser.Math.Clamp(this.dragonHp / DRAGON.MAX_HP, 0, 1);
-    this.dragonBar.width = 196 * r;
-  }
-
-  spawnFireball() {
-    const fb = this.fireballs.create(this.dragon.x - 40, this.dragon.y - 10, 'tex_fireball');
-    fb.setBounce(0.2);
-    fb.setVelocity(-220 + Phaser.Math.Between(-40, 40), -280);
-    fb.setGravityY(GAME.GRAVITY);
-    eventBus.emit(Events.FIREBALL);
-    this.time.delayedCall(4000, () => fb.destroy());
-  }
-
-  updateBattle() {
-    const pad = this.mobile.consume();
-    this.warrior.setMobileState(pad);
-    this.warrior.update(false);
-    this.hud.refresh();
-    this.updateDragonHpBar();
-
-    this.dragon.setVelocityX(this.dragonDir * DRAGON.SPEED);
-    if (this.dragon.x < GAME.WIDTH * 0.45) this.dragonDir = 1;
-    if (this.dragon.x > GAME.WIDTH * 0.9) this.dragonDir = -1;
-    this.dragon.setFlipX(this.dragonDir > 0);
-
-    const now = this.time.now;
-    if (now - this.lastFire > DRAGON.FIRE_COOLDOWN) {
-      this.lastFire = now;
-      this.spawnFireball();
-    }
-
-    // contact damage
-    if (this.physics.overlap(this.warrior.sprite, this.dragon)) {
-      this.warrior.takeDamage(DRAGON.CONTACT_DAMAGE);
-      this.hud.refresh();
-    }
-
-    this.physics.overlap(this.warrior.sprite, this.fireballs, (w, fb) => {
-      fb.destroy();
-      this.warrior.takeDamage(DRAGON.FIRE_DAMAGE);
-      this.hud.refresh();
-    });
-
-    // attack hit (tryAttack 已在 warrior.update 中触发)
-    const hit = this.warrior.consumeHitBox();
-    if (hit) {
-      const dx = Math.abs(this.dragon.x - hit.x);
-      const dy = Math.abs(this.dragon.y - hit.y);
-      if (dx < 70 && dy < 50) {
-        this.dragonHp -= hit.damage;
-        this.dragon.setTint(0xffffff);
-        this.time.delayedCall(80, () => this.dragon.clearTint());
+  resolvePlayerHits() {
+    const box = this.warrior.attackBox;
+    if (box?.rect?.active && this.boss.alive) {
+      if (!box.hitSet.has('dragon') && this.physics.overlap(box.rect, this.boss.sprite)) {
+        box.hitSet.add('dragon');
+        this.boss.takeDamage(box.damage);
         eventBus.emit(Events.HIT);
       }
     }
 
-    if (this.dragonHp <= 0) {
-      this.state = 'aftermath';
-      this.dragon.setVisible(false);
-      this.setBattleUi(false);
-      gameState.branch = 'win';
-      this.runKissReveal('win');
-      return;
+    this.warrior.projectiles.forEach((qi) => {
+      if (!qi.active || !this.boss.alive) return;
+      if (!qi.canHit('dragon')) return;
+      if (this.physics.overlap(qi.body, this.boss.sprite)) {
+        qi.markHit('dragon');
+        this.boss.takeDamage(qi.damage);
+        eventBus.emit(Events.HIT);
+      }
+    });
+  }
+
+  resolveBossHits() {
+    if (!this.boss.alive) return;
+
+    const claw = this.boss.getClawHitbox();
+    if (claw?.active && this.physics.overlap(this.warrior.sprite, claw)) {
+      this.warrior.takeDamage(DRAGON.CLAW_DAMAGE);
     }
+
+    this.physics.overlap(this.warrior.sprite, this.boss.fireballs, (_w, fb) => {
+      fb.destroy();
+      this.warrior.takeDamage(DRAGON.FIRE_DAMAGE);
+      eventBus.emit(Events.FIREBALL);
+    });
+
+    // 近身碰撞轻伤
+    if (this.physics.overlap(this.warrior.sprite, this.boss.sprite)) {
+      this.warrior.takeDamage(Math.floor(DRAGON.CLAW_DAMAGE * 0.5));
+    }
+  }
+
+  updateBattle(time, delta) {
+    const pad = this.mobile.consume();
+    this.warrior.setMobileState(pad);
+    this.warrior.update(delta, false);
+    this.hud.refresh();
+
+    this.boss.update(time, delta, this.warrior.x, this.warrior.y);
+    this.resolvePlayerHits();
+    this.resolveBossHits();
+
+    if (this.state !== 'battle') return;
+
     if (gameState.hp <= 0) {
       this.state = 'aftermath';
-      this.setBattleUi(false);
+      this.boss.setHpVisible(false);
       gameState.branch = 'lose';
       gameState.hp = 1;
       this.runKissReveal('lose');
@@ -239,7 +214,11 @@ export class CastleScene extends Phaser.Scene {
     this.state = 'reveal';
     this.mobile.setEnabled(false);
     this.warrior.sprite.setVelocity(0, 0);
-    this.princess.setVisible(true).setPosition(GAME.WIDTH * 0.55, GAME.HEIGHT - 70);
+    const walkY = GAME.HEIGHT * WORLD.WALK_Y_MAX * 0.95;
+    this.princess.setVisible(true);
+    if (this.princess.setPosition) {
+      this.princess.setPosition(GAME.WIDTH * 0.55, GAME.HEIGHT * 0.72);
+    }
 
     if (result === 'win') {
       await this.dialog.show([
@@ -260,9 +239,14 @@ export class CastleScene extends Phaser.Scene {
       { speaker: '旁白', text: '公主的身体慢慢缩小，皮肤泛起绿色——她变回了青蛙。' },
     ]);
 
-    const beast = this.textures.exists(ASSETS.FROG_BEAST) ? ASSETS.FROG_BEAST : 'tex_frog_princess';
-    this.princess.setTexture(beast);
-    fitSpriteHeight(this.princess, GAME.HEIGHT * 0.42);
+    const beast = this.textures.exists(ASSETS.FROG_BEAST) ? ASSETS.FROG_BEAST : null;
+    if (beast && this.princess.setTexture) {
+      this.princess.setTexture(beast);
+      fitSpriteHeight(this.princess, GAME.HEIGHT * 0.42);
+    } else if (this.princess.setFillStyle) {
+      // TODO: 替换为实际美术资源 — 巨大绿色青蛙
+      this.princess.setFillStyle(COLORS.FROG, 1);
+    }
     this.cameras.main.flash(400, 40, 120, 60);
     eventBus.emit(Events.TRANSFORM);
 
@@ -272,12 +256,13 @@ export class CastleScene extends Phaser.Scene {
     });
   }
 
-  update() {
+  update(time, delta) {
     this.dialog.update();
-    if (this.state === 'battle') this.updateBattle();
-    else if (this.state === 'intro' || this.state === 'reveal' || this.state === 'aftermath') {
+    if (this.state === 'battle') this.updateBattle(time, delta);
+    else {
       this.mobile.setEnabled(false);
-      this.warrior.update(true);
+      this.warrior.update(delta, true);
+      this.hud.refresh();
     }
   }
 }

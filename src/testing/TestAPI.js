@@ -18,6 +18,7 @@ export function getGameSnapshot(game) {
     scene: key,
     phase: gameState.phase || null,
     hp: gameState.hp,
+    mp: gameState.mp,
     lingzhi: gameState.lingzhi,
     tookFrog: gameState.tookFrog,
     branch: gameState.branch,

@@ -1,11 +1,15 @@
+import { PLAYER } from './constants.js';
+
 class GameState {
   constructor() {
     this.reset();
   }
 
   reset() {
-    this.hp = 100;
-    this.maxHp = 100;
+    this.hp = PLAYER.MAX_HP;
+    this.maxHp = PLAYER.MAX_HP;
+    this.mp = PLAYER.MAX_MP;
+    this.maxMp = PLAYER.MAX_MP;
     this.lingzhi = 0;
     this.tookFrog = false;
     this.choseFightDragon = null;

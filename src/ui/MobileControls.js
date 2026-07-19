@@ -2,15 +2,20 @@ import { GAME, COLORS, FONT } from '../utils/constants.js';
 import { ASSETS } from '../art/AssetLoader.js';
 
 /**
- * 移动端：左摇杆 + 右按钮（跳/攻/互动/冲刺）
+ * 移动端：左摇杆（八向）+ 右按钮（攻/技/互动/轻功/药）
  */
 export class MobileControls {
-  constructor(scene, { showAttack = false, showDash = false, showInteract = true } = {}) {
+  constructor(scene, {
+    showAttack = false,
+    showSkill = false,
+    showDash = false,
+    showInteract = true,
+  } = {}) {
     this.scene = scene;
     this.enabled = true;
     this.vector = { x: 0, y: 0 };
-    this.jumpPressed = false;
     this.attackPressed = false;
+    this.skillPressed = false;
     this.interactPressed = false;
     this.dashPressed = false;
     this.usePressed = false;
@@ -74,12 +79,16 @@ export class MobileControls {
       return c;
     };
 
-    mkBtn(btnX, btnY, 48, '跳', 0x2868b0, () => { this.jumpPressed = true; });
-    if (showInteract) {
-      mkBtn(btnX - 100, btnY - 10, 40, '互动', 0x2d6a4f, () => { this.interactPressed = true; });
-    }
     if (showAttack) {
-      mkBtn(btnX - 20, btnY - 100, 42, '攻', COLORS.BLOOD, () => { this.attackPressed = true; });
+      mkBtn(btnX, btnY, 48, '攻', COLORS.BLOOD, () => { this.attackPressed = true; });
+    }
+    if (showSkill) {
+      mkBtn(btnX - 20, btnY - 100, 42, '刀气', 0x8a7020, () => { this.skillPressed = true; });
+    }
+    if (showInteract) {
+      mkBtn(btnX - (showAttack ? 100 : 0), btnY - (showAttack ? 10 : 0), 40, '互动', 0x2d6a4f, () => {
+        this.interactPressed = true;
+      });
     }
     if (showDash) {
       if (scene.textures.exists(ASSETS.SKILL_DASH)) {
@@ -93,6 +102,10 @@ export class MobileControls {
       } else {
         mkBtn(btnX - 110, btnY - 90, 40, '轻功', 0x8a6020, () => { this.dashPressed = true; });
       }
+      // 逃亡关也需要上下移动的主按钮位留给轻功，主圆改为占位提示
+      if (!showAttack) {
+        mkBtn(btnX, btnY, 48, '跑', 0x2868b0, () => {});
+      }
     }
     mkBtn(btnX + 10, btnY - 175, 34, '药', 0x4a2060, () => { this.usePressed = true; });
 
@@ -100,7 +113,6 @@ export class MobileControls {
   }
 
   _moveThumb(x, y) {
-    // pointer.x/y 已是游戏逻辑坐标（适配 Scale.FIT）
     const dx = x - this.joyOrigin.x;
     const dy = y - this.joyOrigin.y;
     const len = Math.hypot(dx, dy) || 1;
@@ -136,16 +148,16 @@ export class MobileControls {
     const out = {
       left: this.vector.x < -0.28,
       right: this.vector.x > 0.28,
-      up: this.vector.y < -0.45,
-      down: this.vector.y > 0.45,
-      jump: this.jumpPressed,
+      up: this.vector.y < -0.28,
+      down: this.vector.y > 0.28,
       attack: this.attackPressed,
+      skill: this.skillPressed,
       interact: this.interactPressed,
       dash: this.dashPressed,
       use: this.usePressed,
     };
-    this.jumpPressed = false;
     this.attackPressed = false;
+    this.skillPressed = false;
     this.interactPressed = false;
     this.dashPressed = false;
     this.usePressed = false;
