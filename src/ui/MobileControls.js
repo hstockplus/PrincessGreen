@@ -1,4 +1,5 @@
 import { GAME, COLORS, FONT } from '../utils/constants.js';
+import { ASSETS } from '../art/AssetLoader.js';
 
 /**
  * 移动端：左摇杆 + 右按钮（跳/攻/互动/冲刺）
@@ -81,7 +82,17 @@ export class MobileControls {
       mkBtn(btnX - 20, btnY - 100, 42, '攻', COLORS.BLOOD, () => { this.attackPressed = true; });
     }
     if (showDash) {
-      mkBtn(btnX - 110, btnY - 90, 40, '轻功', 0x8a6020, () => { this.dashPressed = true; });
+      if (scene.textures.exists(ASSETS.SKILL_DASH)) {
+        const icon = scene.add.image(btnX - 110, btnY - 90, ASSETS.SKILL_DASH)
+          .setDisplaySize(72, 72)
+          .setScrollFactor(0)
+          .setDepth(depth)
+          .setInteractive({ useHandCursor: true });
+        icon.on('pointerdown', () => { if (this.enabled) this.dashPressed = true; });
+        this.btns.push(icon);
+      } else {
+        mkBtn(btnX - 110, btnY - 90, 40, '轻功', 0x8a6020, () => { this.dashPressed = true; });
+      }
     }
     mkBtn(btnX + 10, btnY - 175, 34, '药', 0x4a2060, () => { this.usePressed = true; });
 

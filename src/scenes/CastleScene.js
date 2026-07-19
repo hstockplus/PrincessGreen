@@ -8,6 +8,7 @@ import { sound } from '../utils/sound.js';
 import { eventBus, Events } from '../core/EventBus.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
 import { MobileControls, isTouchDevice } from '../ui/MobileControls.js';
+import { ASSETS, showBackground, fitSpriteHeight } from '../art/AssetLoader.js';
 
 export class CastleScene extends Phaser.Scene {
   constructor() {
@@ -22,18 +23,24 @@ export class CastleScene extends Phaser.Scene {
     this.drawCastle();
     this.createGround();
 
-    this.warrior = new WarriorController(this, 160, GAME.HEIGHT - 160, { canAttack: true });
+    this.warrior = new WarriorController(this, 160, GAME.HEIGHT - 70, { canAttack: true });
     this.physics.add.collider(this.warrior.sprite, this.ground);
 
-    this.dragon = this.physics.add.sprite(GAME.WIDTH * 0.72, GAME.HEIGHT - 140, 'tex_dragon');
+    const dKey = this.textures.exists(ASSETS.DRAGON) ? ASSETS.DRAGON : 'tex_dragon';
+    this.dragon = this.physics.add.sprite(GAME.WIDTH * 0.7, GAME.HEIGHT - 70, dKey);
+    this.dragon.setOrigin(0.5, 1);
+    fitSpriteHeight(this.dragon, GAME.HEIGHT * 0.28);
     this.dragon.setCollideWorldBounds(true);
     this.dragon.body.setAllowGravity(false);
+    this.dragon.body.setSize(this.dragon.width * 0.5, this.dragon.height * 0.35);
     this.dragonHp = DRAGON.MAX_HP;
     this.dragonDir = -1;
     this.lastFire = 0;
     this.physics.add.collider(this.dragon, this.ground);
 
-    this.princess = this.add.image(GAME.WIDTH * 0.82, GAME.HEIGHT - 150, 'tex_princess').setScale(1.3);
+    const pKey = this.textures.exists(ASSETS.PRINCESS) ? ASSETS.PRINCESS : 'tex_princess';
+    this.princess = this.add.image(GAME.WIDTH * 0.85, GAME.HEIGHT - 70, pKey).setOrigin(0.5, 1);
+    fitSpriteHeight(this.princess, GAME.HEIGHT * 0.48);
 
     this.fireballs = this.physics.add.group();
     this.hud = new HUD(this);
@@ -85,25 +92,22 @@ export class CastleScene extends Phaser.Scene {
   }
 
   drawCastle() {
-    const g = this.add.graphics();
-    g.fillGradientStyle(0x0a0810, 0x0a0810, 0x1a1220, 0x1a1220, 1);
-    g.fillRect(0, 0, GAME.WIDTH, GAME.HEIGHT);
-    for (let i = 0; i < 8; i++) {
-      this.add.image(100 + i * 150, GAME.HEIGHT - 78, 'tex_treasure').setScale(1.4).setDepth(2);
-    }
-
+    showBackground(this, ASSETS.BG_CASTLE);
+    this.add.rectangle(GAME.WIDTH / 2, GAME.HEIGHT / 2, GAME.WIDTH, GAME.HEIGHT, 0x000000, 0.2).setDepth(-5);
     this.add.text(GAME.WIDTH / 2, 36, '第三幕 · 恶龙城堡', {
       fontFamily: FONT.FAMILY,
       fontSize: '24px',
       color: COLORS.GOLD_LIGHT,
+      stroke: '#000',
+      strokeThickness: 4,
     }).setOrigin(0.5).setDepth(50);
   }
 
   createGround() {
     this.ground = this.physics.add.staticGroup();
-    for (let i = 0; i < Math.ceil(GAME.WIDTH / 64); i++) {
-      this.ground.create(i * 64 + 32, GAME.HEIGHT - 40, 'tex_platform').refreshBody();
-    }
+    const ground = this.add.rectangle(GAME.WIDTH / 2, GAME.HEIGHT - 28, GAME.WIDTH, 56, 0x000000, 0);
+    this.physics.add.existing(ground, true);
+    this.ground.add(ground);
   }
 
   async runIntro() {
@@ -235,7 +239,7 @@ export class CastleScene extends Phaser.Scene {
     this.state = 'reveal';
     this.mobile.setEnabled(false);
     this.warrior.sprite.setVelocity(0, 0);
-    this.princess.setVisible(true).setPosition(GAME.WIDTH * 0.55, GAME.HEIGHT - 150);
+    this.princess.setVisible(true).setPosition(GAME.WIDTH * 0.55, GAME.HEIGHT - 70);
 
     if (result === 'win') {
       await this.dialog.show([
@@ -256,7 +260,9 @@ export class CastleScene extends Phaser.Scene {
       { speaker: '旁白', text: '公主的身体慢慢缩小，皮肤泛起绿色——她变回了青蛙。' },
     ]);
 
-    this.princess.setTexture('tex_frog_princess').setScale(1.1);
+    const beast = this.textures.exists(ASSETS.FROG_BEAST) ? ASSETS.FROG_BEAST : 'tex_frog_princess';
+    this.princess.setTexture(beast);
+    fitSpriteHeight(this.princess, GAME.HEIGHT * 0.42);
     this.cameras.main.flash(400, 40, 120, 60);
     eventBus.emit(Events.TRANSFORM);
 

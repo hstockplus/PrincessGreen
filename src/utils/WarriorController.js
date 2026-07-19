@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
-import { PLAYER, ITEM } from './constants.js';
+import { PLAYER, ITEM, GAME } from './constants.js';
 import { gameState } from './gameState.js';
 import { eventBus, Events } from '../core/EventBus.js';
+import { ASSETS } from '../art/AssetLoader.js';
 
 /**
  * 勇士移动 / 二段跳 / 攻击 / 灵芝
@@ -18,10 +19,23 @@ export class WarriorController {
     this.lastHitBox = null;
     this.mobile = null;
 
-    this.sprite = scene.physics.add.sprite(x, y, 'tex_warrior');
+    const key = scene.textures.exists(ASSETS.WARRIOR) ? ASSETS.WARRIOR : 'tex_warrior';
+    this.sprite = scene.physics.add.sprite(x, y, key);
     this.sprite.setCollideWorldBounds(true);
     this.sprite.setBounce(0);
-    this.sprite.body.setSize(PLAYER.WIDTH * 0.55, PLAYER.HEIGHT * 0.85);
+    // 立绘比例：约半屏高，碰撞盒收窄脚底
+    const targetH = GAME.HEIGHT * 0.42;
+    this.sprite.setScale(targetH / this.sprite.height);
+    this.sprite.setOrigin(0.5, 1);
+    const bw = this.sprite.displayWidth * 0.28;
+    const bh = this.sprite.displayHeight * 0.22;
+    this.sprite.body.setSize(bw / this.sprite.scaleX, bh / this.sprite.scaleY);
+    this.sprite.body.setOffset(
+      (this.sprite.width - bw / this.sprite.scaleX) / 2,
+      this.sprite.height - bh / this.sprite.scaleY - 4,
+    );
+    this.baseScale = Math.abs(this.sprite.scaleX);
+    this.baseScaleY = Math.abs(this.sprite.scaleY);
 
     this.sprite.setAlpha(0);
     this.sprite.y -= 80;
@@ -30,8 +44,8 @@ export class WarriorController {
       y,
       alpha: 1,
       duration: 450,
-      ease: 'Bounce.easeOut',
-      onComplete: () => scene.cameras.main.shake(80, 0.004),
+      ease: 'Sine.easeOut',
+      onComplete: () => scene.cameras.main.shake(60, 0.003),
     });
 
     this.cursors = scene.input.keyboard?.createCursorKeys?.();
@@ -92,11 +106,12 @@ export class WarriorController {
       this.sprite.setVelocityX(0);
     }
 
-    if (moving && this.scene.anims.exists('warrior-walk')) {
-      this.sprite.play('warrior-walk', true);
-    } else if (this.sprite.anims) {
-      this.sprite.anims.stop();
-      this.sprite.setTexture('tex_warrior');
+    // 立绘不做帧动画，仅用轻微缩放表达步伐
+    if (moving) {
+      this.sprite.setScale(
+        Math.sign(this.sprite.scaleX) * Math.abs(this.baseScale || this.sprite.scaleX),
+        (this.baseScaleY || Math.abs(this.sprite.scaleY)) * (1 + Math.sin(this.scene.time.now * 0.02) * 0.02),
+      );
     }
 
     if (this.sprite.body.blocked.down || this.sprite.body.touching.down) {

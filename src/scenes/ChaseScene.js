@@ -7,6 +7,7 @@ import { sound } from '../utils/sound.js';
 import { eventBus, Events } from '../core/EventBus.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
 import { MobileControls, isTouchDevice } from '../ui/MobileControls.js';
+import { ASSETS, fitSpriteHeight } from '../art/AssetLoader.js';
 
 const LEVEL_WIDTH = GAME.WIDTH * 4.5;
 
@@ -28,13 +29,14 @@ export class ChaseScene extends Phaser.Scene {
     this.drawTunnel();
     this.createGroundAndHazards();
 
-    this.warrior = new WarriorController(this, 200, GAME.HEIGHT - 180);
+    this.warrior = new WarriorController(this, 200, GAME.HEIGHT - 70);
     this.physics.add.collider(this.warrior.sprite, this.ground);
     this.cameras.main.startFollow(this.warrior.sprite, true, 0.12, 0.08);
 
-    // 替换为精灵图资源 — 巨大化青蛙公主
-    this.frogPrincess = this.physics.add.sprite(40, GAME.HEIGHT - 160, 'tex_frog_princess');
-    this.frogPrincess.setScale(2.2);
+    const beast = this.textures.exists(ASSETS.FROG_BEAST) ? ASSETS.FROG_BEAST : 'tex_frog_princess';
+    this.frogPrincess = this.physics.add.sprite(40, GAME.HEIGHT - 70, beast);
+    this.frogPrincess.setOrigin(0.5, 1);
+    fitSpriteHeight(this.frogPrincess, GAME.HEIGHT * 0.55);
     this.frogPrincess.body.setAllowGravity(false);
     this.frogPrincess.setImmovable(true);
 
@@ -68,40 +70,27 @@ export class ChaseScene extends Phaser.Scene {
   }
 
   drawTunnel() {
-    const g = this.add.graphics();
-    g.fillGradientStyle(0x120810, 0x120810, 0x1a1018, 0x1a1018, 1);
-    g.fillRect(0, 0, LEVEL_WIDTH, GAME.HEIGHT);
-    for (let i = 0; i < 30; i++) {
-      const x = i * 180;
-      g.fillStyle(0x2a1820, 0.5);
-      g.fillRect(x, 0, 40, 80 + (i % 4) * 20);
-      g.fillRect(x + 60, GAME.HEIGHT - 160, 50, 160);
+    const tileW = GAME.WIDTH;
+    for (let i = 0; i * tileW < LEVEL_WIDTH + tileW; i++) {
+      const bg = this.add.image(i * tileW + tileW / 2, GAME.HEIGHT / 2, ASSETS.BG_CHASE).setDepth(-10);
+      bg.setDisplaySize(tileW + 4, GAME.HEIGHT);
     }
+    this.add.rectangle(LEVEL_WIDTH / 2, GAME.HEIGHT / 2, LEVEL_WIDTH, GAME.HEIGHT, 0x000000, 0.15).setDepth(-9);
   }
 
   createGroundAndHazards() {
     this.ground = this.physics.add.staticGroup();
-    const tiles = Math.ceil(LEVEL_WIDTH / 64);
-    for (let i = 0; i < tiles; i++) {
-      this.ground.create(i * 64 + 32, GAME.HEIGHT - 40, 'tex_platform').refreshBody();
-    }
+    const ground = this.add.rectangle(LEVEL_WIDTH / 2, GAME.HEIGHT - 28, LEVEL_WIDTH, 56, 0x000000, 0);
+    this.physics.add.existing(ground, true);
+    this.ground.add(ground);
 
-    // gaps / platforms
-    const plats = [
-      [600, 500], [900, 430], [1200, 500], [1500, 400],
-      [1900, 480], [2300, 420], [2700, 500], [3100, 440],
-      [3500, 480], [4000, 420], [4500, 500],
-    ];
-    plats.forEach(([x, y]) => {
-      this.ground.create(x, y, 'tex_platform').setScale(2.5, 1).refreshBody();
-    });
-
-    // spikes — 视觉三角 + 矩形碰撞
+    // 少量落石障碍（非马里奥跳台）
     this.hazards = this.physics.add.staticGroup();
-    [800, 1600, 2500, 3300, 4100].forEach((x) => {
-      this.add.triangle(x, GAME.HEIGHT - 70, 0, 30, 15, 0, 30, 30, COLORS.BLOOD);
-      const body = this.hazards.create(x, GAME.HEIGHT - 62, 'tex_platform');
-      body.setVisible(false).setSize(28, 28).refreshBody();
+    [900, 1700, 2600, 3400, 4200].forEach((x) => {
+      const rock = this.add.rectangle(x, GAME.HEIGHT - 70, 36, 36, 0x4a3020, 0.85)
+        .setStrokeStyle(2, COLORS.BLOOD, 0.6);
+      this.physics.add.existing(rock, true);
+      this.hazards.add(rock);
     });
   }
 

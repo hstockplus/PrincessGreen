@@ -8,6 +8,7 @@ import { sound } from '../utils/sound.js';
 import { eventBus, Events } from '../core/EventBus.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
 import { MobileControls, isTouchDevice } from '../ui/MobileControls.js';
+import { ASSETS, fitSpriteHeight } from '../art/AssetLoader.js';
 
 export class SwampScene extends Phaser.Scene {
   constructor() {
@@ -19,22 +20,23 @@ export class SwampScene extends Phaser.Scene {
     sound.playBgm('swamp');
     this.cameras.main.fadeIn(400, 0, 0, 0);
     this.cameras.main.flash(200, 20, 40, 20);
-    this.physics.world.setBounds(0, 0, GAME.WIDTH * 2.2, GAME.HEIGHT);
-    this.cameras.main.setBounds(0, 0, GAME.WIDTH * 2.2, GAME.HEIGHT);
+    const worldW = GAME.WIDTH * 2.4;
+    this.physics.world.setBounds(0, 0, worldW, GAME.HEIGHT);
+    this.cameras.main.setBounds(0, 0, worldW, GAME.HEIGHT);
 
-    this.drawSwamp();
-    this.createGround();
+    this.drawSwamp(worldW);
+    this.createGround(worldW);
     this.createLingzhi();
     this.createFrog();
 
-    this.warrior = new WarriorController(this, 120, GAME.HEIGHT - 160);
+    this.warrior = new WarriorController(this, 140, GAME.HEIGHT - 70);
     this.cameras.main.startFollow(this.warrior.sprite, true, 0.08, 0.08);
     this.physics.add.collider(this.warrior.sprite, this.ground);
 
     this.hud = new HUD(this);
     this.hud.setHint(isTouchDevice()
-      ? '左摇杆移动 · 跳/互动 · 走到最右侧进入城堡'
-      : '← → 移动 · 空格跳跃 · E 采集/对话 · 前往最右侧');
+      ? '左摇杆前进 · 互动采集/对话 · 走到最右侧'
+      : '← → 前进 · E 采集/对话 · 前往最右侧恶龙城堡');
     this.dialog = new DialogBox(this);
     this.mobile = new MobileControls(this, { showInteract: true, showAttack: false });
     this.talkedFrog = false;
@@ -62,59 +64,50 @@ export class SwampScene extends Phaser.Scene {
     this.time.delayedCall(420, () => this.scene.start('CastleScene'));
   }
 
-  drawSwamp() {
-    const w = GAME.WIDTH * 2.2;
-    const g = this.add.graphics();
-    g.fillGradientStyle(0x0a140e, 0x0a140e, COLORS.SWAMP, COLORS.SWAMP, 1);
-    g.fillRect(0, 0, w, GAME.HEIGHT);
-
-    // dead trees — 替换为精灵图资源
-    for (let i = 0; i < 12; i++) {
-      const x = 80 + i * 180 + Phaser.Math.Between(-20, 20);
-      g.lineStyle(4, 0x1a2818, 0.9);
-      g.lineBetween(x, GAME.HEIGHT - 120, x, GAME.HEIGHT - 280 - (i % 3) * 30);
-      g.lineBetween(x, GAME.HEIGHT - 220, x - 40, GAME.HEIGHT - 260);
-      g.lineBetween(x, GAME.HEIGHT - 240, x + 35, GAME.HEIGHT - 270);
+  drawSwamp(worldW) {
+    // 横向平铺水墨沼泽背景（去马里奥色块感）
+    const tileW = GAME.WIDTH;
+    for (let i = 0; i * tileW < worldW + tileW; i++) {
+      const bg = this.add.image(i * tileW + tileW / 2, GAME.HEIGHT / 2, ASSETS.BG_SWAMP).setDepth(-10);
+      bg.setDisplaySize(tileW + 4, GAME.HEIGHT);
     }
+    this.add.rectangle(worldW / 2, GAME.HEIGHT / 2, worldW, GAME.HEIGHT, 0x000000, 0.18).setDepth(-9);
 
-    // purple miasma particles
     this.add.particles(0, 0, 'tex_fireball', {
-      x: { min: 0, max: w },
-      y: { min: GAME.HEIGHT * 0.35, max: GAME.HEIGHT * 0.75 },
+      x: { min: 0, max: worldW },
+      y: { min: GAME.HEIGHT * 0.3, max: GAME.HEIGHT * 0.7 },
       tint: COLORS.SWAMP_FOG,
-      scale: { start: 0.4, end: 1.2 },
-      alpha: { start: 0.25, end: 0 },
-      speedY: { min: -20, max: -5 },
-      lifespan: 4000,
-      frequency: 200,
+      scale: { start: 0.5, end: 1.4 },
+      alpha: { start: 0.22, end: 0 },
+      speedY: { min: -18, max: -4 },
+      lifespan: 4200,
+      frequency: 220,
       blendMode: 'ADD',
     });
   }
 
-  createGround() {
+  createGround(worldW) {
+    // 隐形地面碰撞 — 视觉完全交给背景
     this.ground = this.physics.add.staticGroup();
-    const tiles = Math.ceil((GAME.WIDTH * 2.2) / 64);
-    for (let i = 0; i < tiles; i++) {
-      const p = this.ground.create(i * 64 + 32, GAME.HEIGHT - 40, 'tex_platform');
-      p.refreshBody();
-    }
-    // floating platforms
-    [[400, 480], [700, 420], [1100, 500], [1500, 440], [1900, 480]].forEach(([x, y]) => {
-      const p = this.ground.create(x, y, 'tex_platform');
-      p.setScale(2, 1).refreshBody();
-    });
+    const ground = this.add.rectangle(worldW / 2, GAME.HEIGHT - 28, worldW, 56, 0x000000, 0);
+    this.physics.add.existing(ground, true);
+    this.ground.add(ground);
   }
 
   createLingzhi() {
     this.lingzhiGroup = this.physics.add.staticGroup();
-    const spots = [350, 680, 980, 1400, 1750, 2100];
+    const key = this.textures.exists(ASSETS.LINGZHI) ? ASSETS.LINGZHI : 'tex_lingzhi';
+    const spots = [420, 780, 1200, 1650, 2100, 2550];
     spots.forEach((x) => {
-      const item = this.lingzhiGroup.create(x, GAME.HEIGHT - 90, 'tex_lingzhi');
+      const item = this.lingzhiGroup.create(x, GAME.HEIGHT - 95, key);
+      item.setOrigin(0.5, 1);
+      fitSpriteHeight(item, 56);
+      item.refreshBody();
       item.setData('taken', false);
       this.tweens.add({
         targets: item,
-        y: item.y - 8,
-        duration: 700 + Phaser.Math.Between(0, 200),
+        y: item.y - 6,
+        duration: 900 + Phaser.Math.Between(0, 200),
         yoyo: true,
         repeat: -1,
         ease: 'Sine.easeInOut',
@@ -123,11 +116,14 @@ export class SwampScene extends Phaser.Scene {
   }
 
   createFrog() {
-    this.frog = this.physics.add.staticImage(520, GAME.HEIGHT - 88, 'tex_frog').setScale(1.6);
+    const key = this.textures.exists(ASSETS.FROG) ? ASSETS.FROG : 'tex_frog';
+    this.frog = this.physics.add.staticImage(620, GAME.HEIGHT - 70, key).setOrigin(0.5, 1);
+    fitSpriteHeight(this.frog, 90);
+    this.frog.refreshBody();
     this.tweens.add({
       targets: this.frog,
-      y: this.frog.y - 6,
-      duration: 900,
+      y: this.frog.y - 5,
+      duration: 1000,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
@@ -186,7 +182,7 @@ export class SwampScene extends Phaser.Scene {
       else this.tryCollect();
     }
 
-    if (!this.leaving && this.warrior.x > GAME.WIDTH * 2.05) {
+    if (!this.leaving && this.warrior.x > GAME.WIDTH * 2.2) {
       this.goToCastle();
     }
   }

@@ -4,6 +4,7 @@ import { DialogBox } from '../ui/DialogBox.js';
 import { sound } from '../utils/sound.js';
 import { gameState } from '../utils/gameState.js';
 import { registerTestHandler } from '../testing/TestAPI.js';
+import { ASSETS, showBackground, fitSpriteHeight } from '../art/AssetLoader.js';
 
 export class PalaceScene extends Phaser.Scene {
   constructor() {
@@ -13,7 +14,8 @@ export class PalaceScene extends Phaser.Scene {
   create() {
     gameState.phase = 'palace';
     sound.playBgm('palace');
-    this.drawPalace();
+    showBackground(this, ASSETS.BG_PALACE);
+    this.add.rectangle(GAME.WIDTH / 2, GAME.HEIGHT / 2, GAME.WIDTH, GAME.HEIGHT, 0x000000, 0.25).setDepth(0);
     this.cameras.main.fadeIn(400, 0, 0, 0);
     this.cameras.main.flash(250, 40, 30, 20);
 
@@ -21,7 +23,9 @@ export class PalaceScene extends Phaser.Scene {
       fontFamily: FONT.FAMILY,
       fontSize: '28px',
       color: COLORS.GOLD_LIGHT,
-    }).setOrigin(0.5);
+      stroke: '#000',
+      strokeThickness: 4,
+    }).setOrigin(0.5).setDepth(20);
 
     this.add.text(GAME.WIDTH / 2, GAME.HEIGHT - 28, '点击屏幕继续对话', {
       fontFamily: FONT.FAMILY,
@@ -29,42 +33,22 @@ export class PalaceScene extends Phaser.Scene {
       color: COLORS.UI_MUTED,
     }).setOrigin(0.5).setDepth(50);
 
-    this.add.image(GAME.WIDTH * 0.55, GAME.HEIGHT * 0.55, 'tex_king').setScale(1.8);
-    this.add.image(GAME.WIDTH * 0.32, GAME.HEIGHT * 0.58, 'tex_warrior').setScale(1.6);
+    // 立绘：勇士左、国王位用公主剪影占位靠右（悬赏氛围）
+    const warrior = this.add.image(GAME.WIDTH * 0.28, GAME.HEIGHT * 0.92, ASSETS.WARRIOR)
+      .setOrigin(0.5, 1).setDepth(10);
+    fitSpriteHeight(warrior, GAME.HEIGHT * 0.62);
 
-    this.add.particles(GAME.WIDTH * 0.5, 100, 'tex_fireball', {
-      tint: 0xc9a227,
-      scale: { start: 0.1, end: 0.35 },
-      alpha: { start: 0.35, end: 0 },
-      speedY: { min: 10, max: 40 },
-      lifespan: 3000,
-      frequency: 220,
-      emitZone: { type: 'random', source: new Phaser.Geom.Rectangle(-400, 0, 800, 40) },
-      blendMode: 'ADD',
-    });
+    if (this.textures.exists(ASSETS.PRINCESS)) {
+      // 空王座侧的「悬赏画像」氛围 — 用公主立绘半透明
+      const portrait = this.add.image(GAME.WIDTH * 0.72, GAME.HEIGHT * 0.55, ASSETS.PRINCESS)
+        .setOrigin(0.5, 1).setAlpha(0.35).setDepth(5);
+      fitSpriteHeight(portrait, GAME.HEIGHT * 0.4);
+    }
 
     this.dialog = new DialogBox(this);
     registerTestHandler('advanceDialogue', () => this.dialog.forceAdvance());
     registerTestHandler('pickDialogueChoice', (id) => this.dialog.forcePick(id));
     this.runIntro();
-  }
-
-  drawPalace() {
-    const g = this.add.graphics();
-    g.fillGradientStyle(0x0a0c10, 0x0a0c10, 0x1a1510, 0x1a1510, 1);
-    g.fillRect(0, 0, GAME.WIDTH, GAME.HEIGHT);
-    g.fillStyle(0x121820, 0.8);
-    g.fillRect(0, GAME.HEIGHT * 0.7, GAME.WIDTH, GAME.HEIGHT * 0.3);
-    for (let i = 0; i < 6; i++) {
-      const x = 100 + i * 210;
-      g.fillStyle(0x2a2418, 0.7);
-      g.fillRect(x, 80, 36, GAME.HEIGHT * 0.62);
-      g.fillStyle(COLORS.GOLD, 0.25);
-      g.fillRect(x - 8, 80, 52, 12);
-    }
-    g.fillStyle(0xffffff, 0.03);
-    g.fillEllipse(200, 120, 280, 60);
-    g.fillEllipse(900, 100, 320, 50);
   }
 
   async runIntro() {
